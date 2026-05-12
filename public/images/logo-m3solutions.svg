@@ -1,0 +1,8 @@
+<svg xmlns="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Arial_font.svg/3840px-Arial_font.svg.png" viewBox="0 0 280 50" width="280" height="50">
+  <style>
+    .m3 { font-family: Arial, sans-serif; font-size: 36px; font-weight: bold; fill: #2563eb; }
+    .solutions { font-family: Arial, sans-serif; font-size: 36px; font-weight: bold; fill: #1f2937; }
+  </style>
+  <text x="0" y="38" class="m3">M3</text>
+  <text x="52" y="38" class="solutions">Solutions</text>
+</svg>

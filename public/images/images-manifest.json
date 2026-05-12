@@ -1,0 +1,96 @@
+{
+  "images": {
+    "1_hero_background": {
+      "filename": "hero-background.jpg",
+      "path": "/images/hero-background.jpg",
+      "description": "Data center moderno com luzes azuis, tecnologia, servidores",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "2_consultoria_ti": {
+      "filename": "consultoria-ti.jpg",
+      "path": "/images/consultoria-ti.jpg",
+      "description": "Pessoas em reunião discutindo, ambiente corporativo",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "3_gestao_ti": {
+      "filename": "gestao-ti.jpg",
+      "path": "/images/gestao-ti.jpg",
+      "description": "Dashboard de monitoramento, gráficos em tela",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "4_noc_24x7": {
+      "filename": "noc-24x7.jpg",
+      "path": "/images/noc-24x7.jpg",
+      "description": "Sala de operações com monitores, centro de monitoramento",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "5_cloud_computing": {
+      "filename": "cloud-computing.jpg",
+      "path": "/images/cloud-computing.jpg",
+      "description": "Nuvens digitais abstratas, servidores cloud azul",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "6_seguranca": {
+      "filename": "seguranca.jpg",
+      "path": "/images/seguranca.jpg",
+      "description": "Cadeado digital, cybersecurity, proteção",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "7_suporte_tecnico": {
+      "filename": "suporte-tecnico.jpg",
+      "path": "/images/suporte-tecnico.jpg",
+      "description": "Técnico trabalhando em computador, headset",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "8_equipe_corporativa": {
+      "filename": "equipe-corporativa.jpg",
+      "path": "/images/equipe-corporativa.jpg",
+      "description": "Grupo de profissionais em escritório moderno",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "9_servidores_datacenter": {
+      "filename": "servidores-datacenter.jpg",
+      "path": "/images/servidores-datacenter.jpg",
+      "description": "Racks de servidores, infraestrutura",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "10_projetos": {
+      "filename": "projetos.jpg",
+      "path": "/images/projetos.jpg",
+      "description": "Pessoas analisando planta, projeto de infraestrutura",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "11_locacao_equipamentos": {
+      "filename": "locacao-equipamentos.jpg",
+      "path": "/images/locacao-equipamentos.jpg",
+      "description": "Laptops e equipamentos de TI",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    },
+    "12_nuvem_privada": {
+      "filename": "nuvem-privada.jpg",
+      "path": "/images/nuvem-privada.jpg",
+      "description": "Servidor privado, infraestrutura cloud",
+      "aspect_ratio": "16:9",
+      "resolution": "1920x1080"
+    }
+  },
+  "metadata": {
+    "total_images": 12,
+    "format": "JPEG",
+    "quality": "90%",
+    "source": "Unsplash, Pexels, Dreamstime, Vecteezy (bancos gratuitos)",
+    "theme": "Tecnologia, TI, azul corporativo",
+    "generated_at": "2026-01-12"
+  }
+}

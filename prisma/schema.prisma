@@ -1,0 +1,1456 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String?
+  password      String
+  role          String      @default("admin")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  auditLogs          AuditLog[]
+  authorProfile      BlogAuthor?
+  approvedPosts      BlogPost[]          @relation("PostApprover")
+  blogPosts          BlogPost[]          @relation("PostCreator")
+  posts              Post[]
+  evolutionInstances EvolutionInstance[]
+  waTags             WaTag[]
+  waContacts         WaContact[]
+  waScheduledContacts WaScheduledContact[]
+  aiAgentConfigs      AiAgentConfig[]
+  aiSessionsOwned     AiSession[]      @relation("AiSessionOwner")
+  aiSessionsAssigned  AiSession[]      @relation("AiSessionAssignee")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  content     String
+  excerpt     String?
+  imageUrl    String?
+  category    String   @default("Tecnologia")
+  author      String   @default("M3Solutions")
+  status      String   @default("published")
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String?
+  description String?
+  website     String?
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  showOnHome  Boolean  @default(true)
+}
+
+model BlogPost {
+  id                    String              @id @default(cuid())
+  title                 String
+  slug                  String              @unique
+  excerpt               String?
+  content               String?
+  contentHtml           String?
+  metaTitle             String?
+  metaDescription       String?
+  keywords              String[]            @default([])
+  featuredImage         String?
+  imageAlt              String?
+  status                PostStatus          @default(BRIEFING)
+  publishedAt           DateTime?
+  scheduledAt           DateTime?
+  briefTitle            String?
+  briefPersona          String?
+  briefCta              String?
+  briefKeywords         String[]            @default([])
+  briefNotes            String?
+  aiGenerated           Boolean             @default(false)
+  aiModel               String?
+  aiPromptUsed          String?
+  aiGeneratedAt         DateTime?
+  categoryId            String?
+  authorId              String?
+  createdById           String?
+  approvedById          String?
+  approvedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  videoUrl              String?
+  attendanceType        AttendanceType?
+  brand                 String?
+  geoCity               String?
+  geoCountry            String?
+  geoNeighborhood       String?
+  geoState              String?
+  mainKeyword           String?
+  pageObjective         PageObjective?
+  schemaMarkup          String?
+  secondaryKeywords     String[]            @default([])
+  seoBlockReason        String?
+  seoBlocked            Boolean             @default(false)
+  seoLevel              SeoLevel?
+  seoLevelJustification String?
+  seoRecommendedUrl     String?
+  serviceType           String?
+  secondaryImage        String?
+  reviewToken           String?
+  images                BlogImage[]
+  approvedBy            User?               @relation("PostApprover", fields: [approvedById], references: [id])
+  author                BlogAuthor?         @relation(fields: [authorId], references: [id])
+  category              BlogCategory?       @relation(fields: [categoryId], references: [id])
+  createdBy             User?               @relation("PostCreator", fields: [createdById], references: [id])
+  tags                  BlogPostTag[]
+  chronicle             Chronicle?
+  socialPublications    SocialPublication[]
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([categoryId])
+  @@index([seoLevel])
+  @@index([geoCity])
+  @@index([deletedAt])
+
+  viewCount             Int                 @default(0)
+  deletedAt             DateTime?
+  versions              PostVersion[]
+}
+
+model BlogCategory {
+  id          String               @id @default(cuid())
+  name        String
+  slug        String               @unique
+  description String?
+  image       String?
+  color       String?              @default("#0066CC")
+  order       Int                  @default(0)
+  active      Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  authors     BlogCategoryAuthor[]
+  tags        BlogCategoryTag[]
+  posts       BlogPost[]
+  chronicles  Chronicle[]
+}
+
+model BlogTag {
+  id         String            @id @default(cuid())
+  name       String
+  slug       String            @unique
+  createdAt  DateTime          @default(now())
+  authors    BlogAuthorTag[]
+  categories BlogCategoryTag[]
+  posts      BlogPostTag[]
+}
+
+model BlogCategoryAuthor {
+  id         String       @id @default(cuid())
+  categoryId String
+  authorId   String
+  author     BlogAuthor   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category   BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, authorId])
+}
+
+model BlogCategoryTag {
+  id         String       @id @default(cuid())
+  categoryId String
+  tagId      String
+  category   BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tag        BlogTag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, tagId])
+}
+
+model BlogAuthorTag {
+  id       String     @id @default(cuid())
+  authorId String
+  tagId    String
+  author   BlogAuthor @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tag      BlogTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, tagId])
+}
+
+model BlogPostTag {
+  id     String   @id @default(cuid())
+  postId String
+  tagId  String
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+}
+
+model BlogAuthor {
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String               @unique
+  bio                 String?
+  avatar              String?
+  email               String?
+  linkedin            String?
+  twitter             String?
+  userId              String?              @unique
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  avoidTopics         String?
+  contentGoals        String?
+  keywords            String?
+  promptTemplate      String?
+  targetAudience      String?
+  tone                String?
+  writingStyle        String?
+  wordCountMax        Int?
+  wordCountMin        Int?
+  videoAvatarDesc     String?
+  videoAvatarName     String?
+  videoAvatarStyle    String?
+  videoBackground     String?
+  videoCompanyMention String?
+  videoCta            String?
+  videoDuration       String?
+  videoEnabled        Boolean              @default(false)
+  videoIntroScript    String?
+  videoOutroScript    String?
+  videoTone           String?
+  videoAvatarImage    String?
+  user                User?                @relation(fields: [userId], references: [id])
+  tags                BlogAuthorTag[]
+  categories          BlogCategoryAuthor[]
+  posts               BlogPost[]
+  chronicles          Chronicle[]
+}
+
+model VoiceTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  persona     String
+  tone        String?
+  examples    String?
+  isDefault   Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BlogImage {
+  id        String    @id @default(cuid())
+  postId    String?
+  filename  String
+  path      String
+  alt       String?
+  caption   String?
+  size      Int?
+  mimeType  String?
+  width     Int?
+  height    Int?
+  isFeature Boolean   @default(false)
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  post      BlogPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  userId     String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AIUsageLog {
+  id           String   @id @default(cuid())
+  model        String
+  promptTokens Int
+  outputTokens Int
+  totalTokens  Int
+  cost         Float?
+  operation    String
+  postId       String?
+  userId       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model AIPageModification {
+  id              String   @id @default(cuid())
+  pageId          String?
+  pageTitle       String
+  pageSlug        String
+  action          String   // "edit" or "create"
+  prompt          String
+  referenceUrls   String?  // JSON array of external URLs
+  referencePageIds String? // JSON array of internal page IDs
+  previousContent String?  // JSON snapshot before change
+  newContent      String?  // JSON snapshot after change
+  status          String   @default("pending") // pending, applied, reverted
+  provider        String?
+  userId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AIQuota {
+  id             String   @id @default(cuid())
+  month          String   @unique
+  tokensUsed     Int      @default(0)
+  tokensLimit    Int      @default(1000000)
+  postsGenerated Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SiteConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  label       String?
+  description String?
+  category    String   @default("general")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model CtaTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  text         String
+  buttonText   String
+  formId       String?
+  linkUrl      String?
+  whatsappText String?
+  category     String   @default("general")
+  icon         String?
+  color        String?  @default("#7C3AED")
+  active       Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+
+
+
+model MediaLibrary {
+  id            String   @id @default(cuid())
+  filename      String
+  url           String
+  thumbnailUrl  String?
+  alt           String?
+  caption       String?
+  category      String   @default("general")
+  mimeType      String?
+  size          Int?
+  width         Int?
+  height        Int?
+  generatedByAI Boolean  @default(false)
+  aiPrompt      String?
+  aiProvider    String?
+  tags          String[] @default([])
+  usageCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([generatedByAI])
+  @@index([createdAt])
+}
+
+model BrandTokens {
+  id              String    @id @default(cuid())
+  primaryColor    String    @default("#3B82F6")
+  secondaryColor  String    @default("#1E40AF")
+  accentColor     String    @default("#10B981")
+  textColor       String    @default("#1F2937")
+  textLightColor  String    @default("#6B7280")
+  backgroundColor String    @default("#FFFFFF")
+  surfaceColor    String    @default("#F9FAFB")
+  fontPrimary     String    @default("Inter, sans-serif")
+  fontSecondary   String    @default("Inter, sans-serif")
+  fontHeading     String    @default("Inter, sans-serif")
+  logoUrl         String?
+  logoLightUrl    String?
+  logoIconUrl     String?
+  styleType       String    @default("corporate")
+  borderRadius    String    @default("8px")
+  buttonStyle     String    @default("rounded")
+  iconStyle       String    @default("solid")
+  lastAnalyzed    DateTime?
+  analyzedFrom    String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model SocialMediaAccount {
+  id                 String              @id @default(cuid())
+  platform           String              @unique
+  accountName        String?
+  accountId          String?
+  profileUrl         String?
+  profileImage       String?
+  accessToken        String
+  refreshToken       String?
+  tokenType          String              @default("Bearer")
+  scope              String?
+  expiresAt          DateTime?
+  refreshExpiresAt   DateTime?
+  autoPost           Boolean             @default(true)
+  postTemplate       String?
+  hashtagsDefault    String[]            @default([])
+  isConnected        Boolean             @default(true)
+  lastUsedAt         DateTime?
+  lastError          String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organizationId     String?
+  organizationName   String?
+  postAsOrganization Boolean             @default(false)
+  postAsBoth         Boolean             @default(false)
+  publications       SocialPublication[]
+
+  @@index([platform, isConnected])
+}
+
+model SocialPublication {
+  id           String             @id @default(cuid())
+  accountId    String
+  blogPostId   String?
+  platform     String
+  postId       String?
+  postUrl      String?
+  content      String
+  imageUrl     String?
+  status       String             @default("pending")
+  errorMessage String?
+  likes        Int                @default(0)
+  comments     Int                @default(0)
+  shares       Int                @default(0)
+  publishedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  account      SocialMediaAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  blogPost     BlogPost?          @relation(fields: [blogPostId], references: [id], onDelete: SetNull)
+  metrics      SocialMetric[]
+
+  @@index([accountId])
+  @@index([blogPostId])
+  @@index([platform, status])
+}
+
+model SecurityEvent {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  ip             String
+  userId         String?
+  sessionId      String?
+  eventType      String
+  action         String
+  reason         String
+  method         String
+  url            String
+  userAgent      String?
+  payloadExcerpt String?
+  statusCode     Int?
+  country        String?
+  city           String?
+
+  @@index([ip])
+  @@index([eventType])
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model SecurityBlock {
+  id        String    @id @default(cuid())
+  ip        String
+  reason    String
+  eventType String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  hitCount  Int       @default(1)
+  createdBy String?
+
+  @@index([ip])
+  @@index([active])
+  @@index([expiresAt])
+}
+
+model SecurityAllowlist {
+  id        String    @id @default(cuid())
+  ip        String    @unique
+  reason    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  createdBy String?
+
+  @@index([ip])
+  @@index([active])
+}
+
+model SecuritySetting {
+  id           String   @id @default(cuid())
+  settingKey   String   @unique
+  settingValue String
+  description  String?
+  updatedAt    DateTime @updatedAt
+
+  @@index([settingKey])
+}
+
+model SecurityRateLimit {
+  id           String   @id @default(cuid())
+  ip           String
+  endpoint     String
+  windowStart  DateTime
+  requestCount Int      @default(1)
+
+  @@unique([ip, endpoint, windowStart])
+  @@index([ip])
+  @@index([windowStart])
+}
+
+model SecurityLoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  email     String?
+  success   Boolean
+  createdAt DateTime @default(now())
+  userAgent String?
+
+  @@index([ip])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model MonitoredSite {
+  id            String             @id @default(cuid())
+  name          String
+  url           String
+  feedUrl       String?
+  selector      String?
+  active        Boolean            @default(true)
+  checkInterval Int                @default(3)
+  lastCheckedAt DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  articles      CollectedArticle[]
+
+  @@index([active])
+  @@index([lastCheckedAt])
+}
+
+model CollectedArticle {
+  id          String        @id @default(cuid())
+  siteId      String
+  title       String
+  excerpt     String?
+  originalUrl String        @unique
+  imageUrl    String?
+  publishedAt DateTime?
+  collectedAt DateTime      @default(now())
+  status      ArticleStatus @default(pending)
+  notifiedAt  DateTime?
+  selectedAt  DateTime?
+  chronicle   Chronicle?
+  site        MonitoredSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([status])
+  @@index([collectedAt])
+  @@index([notifiedAt])
+}
+
+model ChronicleRecipient {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}
+
+model Chronicle {
+  id               String           @id @default(cuid())
+  articleId        String           @unique
+  title            String
+  content          String
+  featuredImage    String?
+  sourceReference  String
+  status           ChronicleStatus  @default(draft)
+  publishToSocial  Boolean          @default(false)
+  socialPlatforms  String[]         @default([])
+  categoryId       String?
+  authorId         String?
+  blogPostId       String?          @unique
+  scheduledFor     DateTime?
+  publishedAt      DateTime?
+  approvedAt       DateTime?
+  approvedBy       String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  facebookPostUrl  String?
+  instagramPostUrl String?
+  linkedinPostUrl  String?
+  twitterPostUrl   String?
+  article          CollectedArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author           BlogAuthor?      @relation(fields: [authorId], references: [id])
+  blogPost         BlogPost?        @relation(fields: [blogPostId], references: [id], onDelete: SetNull)
+  category         BlogCategory?    @relation(fields: [categoryId], references: [id])
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([scheduledFor])
+}
+
+model SelectionToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model ApprovalToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ===== FLUXOS DE EMAIL MARKETING =====
+
+
+enum FlowType {
+  COLD_MAIL
+  DIGEST
+  CUSTOM
+}
+
+enum FlowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum FlowStepCondition {
+  NO_RESPONSE
+  NO_REPLY
+  NO_OPEN
+  NO_CLICK
+  ALWAYS
+  OPENED
+  CLICKED
+  REPLIED
+}
+
+enum FlowStepStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum FlowRecipientState {
+  IN_PROGRESS
+  RESPONDED
+  COMPLETED
+  DISCARDED
+}
+
+enum DiscardReason {
+  BOUNCE
+  FAILED_DELIVERY
+  MANUAL
+  UNSUBSCRIBED
+}
+
+enum PostStatus {
+  BRIEFING
+  GENERATING
+  DRAFT
+  REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttendanceType {
+  REMOTE
+  LOCAL
+  HYBRID
+}
+
+enum PageObjective {
+  AUTHORITY
+  TRAFFIC
+  CONVERSION
+}
+
+enum SeoLevel {
+  GLOBAL
+  STATE
+  CITY
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TemplateType {
+  HEADER
+  FOOTER
+  HOME
+  SERVICES
+  PRODUCTS
+  ABOUT
+  CONTACT
+  POST_LIST
+  POST_DETAIL
+  LEGAL
+  CUSTOM
+}
+
+enum ArticleStatus {
+  pending
+  selected
+  rejected
+  converted
+  expired
+}
+
+enum ChronicleStatus {
+  draft
+  pending_review
+  approved
+  scheduled
+  published
+  rejected
+}
+
+enum IpAssetType {
+  IP
+  CIDR
+}
+
+enum IpAssetStatus {
+  ATIVO
+  PAUSADO
+  CONCLUIDO
+  ERRO
+}
+
+enum DomainWhoisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+  PENDING_RETRY
+}
+
+enum DiscoveryAction {
+  REVERSE_DNS
+  DNS_VALIDATION
+  WHOIS_LOOKUP
+  DOMAIN_SAVED
+  ERROR
+  CRT_SEARCH
+}
+
+enum MiningContactStatus {
+  NOVO
+  CONTATADO
+  INTERESSADO
+  NEGOCIANDO
+  CONVERTIDO
+  DESCARTADO
+}
+
+enum ExclusionReason {
+  CONCORRENTE
+  PARCEIRO
+  FORA_FOCO
+  SPAM
+  INVALIDO
+  SEM_POTENCIAL
+  DUPLICADO
+  OUTRO
+}
+
+enum SubscriberStatus {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+  BLOCKED
+  BOUNCED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+  PAUSED
+}
+
+enum CampaignType {
+  MANUAL
+  POST_DIGEST
+  AUTOMATED
+  COLD_MAIL
+  DIGEST
+}
+
+enum DeliveryStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  REPLIED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
+}
+
+// ==================== SEO Module ====================
+
+model SEOGoogleToken {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scope        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SEOIndexNowLog {
+  id          String   @id @default(cuid())
+  urls        String[]
+  status      String   // SUCCESS, FAILED, PENDING
+  response    String?
+  engine      String   // bing, yandex, indexnow
+  createdAt   DateTime @default(now())
+}
+
+model SEOSitemapSubmission {
+  id          String   @id @default(cuid())
+  sitemapUrl  String
+  engine      String   // google, bing
+  status      String   // SUBMITTED, PENDING, ERROR
+  urlCount    Int?     // Number of URLs submitted
+  lastChecked DateTime?
+  response    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ========== DIGEST CONFIG & ADS ==========
+
+// ==============================
+// Analytics Local
+// ==============================
+model PageView {
+  id              String   @id @default(cuid())
+  sessionId       String   // identificador único da sessão (cookie)
+  path            String   // ex: /noticias/meu-artigo
+  title           String?  // título da página
+  referrer        String?  // URL de origem
+  referrerDomain  String?  // domínio da origem (ex: google.com)
+  userAgent       String?
+  ip              String?
+  country         String?  @default("Brasil")
+  browser         String?  // Chrome, Firefox, Safari, Edge...
+  browserVersion  String?
+  os              String?  // Windows, macOS, iOS, Android, Linux
+  deviceType      String?  // desktop, mobile, tablet
+  screenWidth     Int?
+  screenHeight    Int?
+  language        String?  // pt-BR, en-US, etc.
+  isBot           Boolean  @default(false)
+  duration        Int?     // tempo na página em segundos (atualizado via beacon)
+  channelGroup    String?  // Direct, Organic Search, Social, Referral, etc.
+  statusCode      Int      @default(200) // HTTP status code (200, 301, 404, etc.)
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([path])
+  @@index([createdAt, path])
+  @@index([createdAt, isBot])
+}
+
+model UrlRedirect {
+  id          String   @id @default(cuid())
+  sourcePath  String   @unique
+  targetPath  String
+  statusCode  Int      @default(301)
+  hits        Int      @default(0)
+  active      Boolean  @default(true)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sourcePath])
+  @@index([active])
+}
+
+
+// ============================================================
+// Páginas Dinâmicas
+// ============================================================
+
+model DynamicPage {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  pageType        String    @default("institutional") // institutional, service, product, legal, landing
+  content         String?   @db.Text // HTML content
+  excerpt         String?   // Short description
+  featuredImage   String?   // Hero/featured image URL
+  metaTitle       String?
+  metaDescription String?
+  status          String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  publishedAt     DateTime?
+  order           Int       @default(0)
+  parentId        String?   // For nested pages
+  parent          DynamicPage?  @relation("PageHierarchy", fields: [parentId], references: [id])
+  children        DynamicPage[] @relation("PageHierarchy")
+  
+  // Layout/style options stored as JSON
+  layoutConfig    String?   @db.Text // JSON: { heroStyle, showCTA, ctaText, sections, etc. }
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([pageType])
+  @@index([parentId])
+  @@index([slug])
+}
+
+// ============================================================
+// Menus de Navegação
+// ============================================================
+
+model NavigationMenu {
+  id        String           @id @default(cuid())
+  name      String           @unique // "header", "footer-solucoes", "footer-institucional", etc.
+  label     String           // Display name: "Menu Principal", "Soluções", etc.
+  items     NavigationItem[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model NavigationItem {
+  id        String           @id @default(cuid())
+  menuId    String
+  menu      NavigationMenu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  label     String           // Display text
+  url       String           // Link URL (relative or absolute)
+  icon      String?          // Optional icon name
+  target    String           @default("_self") // _self, _blank
+  parentId  String?          // For dropdown/nested items
+  parent    NavigationItem?  @relation("ItemHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  NavigationItem[] @relation("ItemHierarchy")
+  order     Int              @default(0)
+  active    Boolean          @default(true)
+  highlight Boolean          @default(false) // For CTA-style menu items
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([menuId])
+  @@index([parentId])
+  @@index([order])
+}
+// =============================================
+// BLOG IMPROVEMENTS
+// =============================================
+
+model PostVersion {
+  id        String   @id @default(cuid())
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  title     String
+  content   String?
+  excerpt   String?
+  editedBy  String?
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([createdAt])
+}
+
+model NewsletterSubscriber {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  status         String   @default("ACTIVE") // ACTIVE, UNSUBSCRIBED
+  subscribedAt   DateTime @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+}
+
+model SocialMetric {
+  id             String   @id @default(cuid())
+  publicationId  String
+  publication    SocialPublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  likes          Int      @default(0)
+  shares         Int      @default(0)
+  comments       Int      @default(0)
+  impressions    Int      @default(0)
+  clicks         Int      @default(0)
+  fetchedAt      DateTime @default(now())
+
+  @@index([publicationId])
+  @@index([fetchedAt])
+}
+
+model NotificationRecipient {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  categories String[] @default(["gestao"])
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  cnpj      String?
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([read])
+}
+
+model SoftwareCategory {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  icon        String?
+  displayOrder Int     @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  products    SoftwareProduct[]
+
+  @@index([active])
+}
+
+model SoftwareProduct {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  shortDescription String?
+  fullDescription  String?
+  categoryId       String
+  category         SoftwareCategory @relation(fields: [categoryId], references: [id])
+  vendor           String?
+  image            String?
+  features         Json?    // string[]
+  benefits         Json?    // string[]
+  editions         Json?    // {name, description}[]
+  relatedProducts  Json?    // string[]
+  displayOrder     Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([vendor])
+  @@index([active])
+  @@index([displayOrder])
+}
+
+model Solution {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  category         String   // services, cloud, backup, security, security-partners, software, datacenters
+  title            String
+  subtitle         String?
+  image            String?
+  icon             String?
+  logo             String?
+  description      String?
+  longDescription  String?
+  benefits         Json?    // string[]
+  features         Json?    // {title, description, link?}[]
+  highlights       Json?    // string[]
+  extraSections    Json?    // {title, description, items[], layout?, type?}[]
+  partnerLogos     Json?    // {name, logo}[]
+  dataCenterPartners Json?  // {name, logo, link}[]
+  metaTitle        String?
+  metaDescription  String?
+  cardVariant      String?  // card, hero, partner, cloud, security
+  displayOrder     Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([category])
+  @@index([active])
+  @@index([displayOrder])
+}
+
+model SolutionCategory {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  label              String
+  subtitle           String?
+  displayOrder       Int      @default(0)
+  active             Boolean  @default(true)
+  gridCols           Int      @default(3)       // grid columns on public page (2, 3, 4, 6)
+  bgVariant          String   @default("white") // "white" or "slate"
+  defaultCardVariant String   @default("card")  // card, cloud, security, partner
+  parentSlug         String?                     // if set, rendered as sub-section under parent
+  partnerLogos       Json?                       // [{name, logo}] shown above grid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([displayOrder])
+  @@index([active])
+}
+
+// ============================================
+// MÓDULO COMUNICAÇÃO - Evolution API
+// ============================================
+
+model EvolutionServer {
+  id        String   @id @default(cuid())
+  name      String
+  apiUrl    String
+  apiKey    String
+  isDefault Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  instances EvolutionInstance[]
+
+  @@index([active])
+}
+
+model EvolutionInstance {
+  id            String   @id @default(cuid())
+  instanceName  String
+  instanceToken String?
+  phoneNumber   String?
+  status        String   @default("created") // created, connecting, open, close
+  profileName   String?
+  profilePicUrl String?
+  serverId      String
+  server        EvolutionServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  conversations WaConversation[]
+  waContacts    WaContact[]
+  aiSessions    AiSession[]
+
+  @@unique([serverId, instanceName])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model WaConversation {
+  id            String   @id @default(cuid())
+  remoteJid     String   // ex: 5511999999999@s.whatsapp.net
+  contactName   String?
+  contactPhone  String?
+  profilePicUrl String?
+  lastMessage   String?
+  lastMessageAt DateTime?
+  unreadCount   Int      @default(0)
+  instanceId    String
+  instance      EvolutionInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  messages      WaMessage[]
+  tags          WaConversationTag[]
+  aiSessions    AiSession[]
+
+  @@unique([instanceId, remoteJid])
+  @@index([instanceId, lastMessageAt(sort: Desc)])
+}
+
+model WaMessage {
+  id             String   @id @default(cuid())
+  messageId      String?  // ID original do WhatsApp
+  conversationId String
+  conversation   WaConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  fromMe         Boolean  @default(false)
+  content        String?  @db.Text
+  mediaType      String?  // text, image, video, audio, document, sticker
+  mediaUrl       String?
+  timestamp      DateTime
+  status         String?  // sent, delivered, read
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, timestamp(sort: Desc)])
+  @@index([messageId])
+}
+
+model WaTag {
+  id            String   @id @default(cuid())
+  name          String
+  color         String   @default("#3B82F6") // hex color
+  description   String?
+  displayOrder  Int      @default(0)
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  conversations WaConversationTag[]
+
+  @@index([ownerId])
+}
+
+model WaConversationTag {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   WaConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tagId          String
+  tag            WaTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedAt     DateTime @default(now())
+
+  @@unique([conversationId, tagId])
+  @@index([tagId])
+}
+
+model WaContact {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String   // E.164 format: 5511999999999
+  email         String?
+  company       String?
+  notes         String?  @db.Text
+  tags          String?  // comma-separated tags for quick filtering
+  source        String?  @default("manual") // manual, whatsapp, import
+  remoteJid     String?  // linked WhatsApp JID if known
+  instanceId    String?
+  instance      EvolutionInstance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  scheduledContacts WaScheduledContact[]
+
+  @@unique([ownerId, phone])
+  @@index([ownerId])
+  @@index([phone])
+  @@index([instanceId])
+}
+
+model WaScheduledContact {
+  id          String   @id @default(cuid())
+  contactId   String
+  contact     WaContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  title       String   // brief description of what to contact about
+  message     String?  @db.Text // pre-written message to send
+  scheduledAt DateTime // when to contact
+  status      String   @default("pending") // pending, done, cancelled, sent, failed
+  completedAt DateTime?
+  sentAt      DateTime? // when the message was actually sent via WhatsApp
+  sentError   String?   // error message if sending failed
+  autoSend    Boolean  @default(true) // whether to auto-send message via WhatsApp
+  notes       String?  @db.Text // notes after contact
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId, status])
+  @@index([scheduledAt])
+  @@index([contactId])
+}
+
+model InstitutionalPage {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  metaTitle       String?
+  metaDescription String?
+  heroTitle       String?
+  heroSubtitle    String?
+  content         String?  @db.Text
+  sections        Json?
+  active          Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@index([slug])
+  @@index([active])
+}
+
+// ─── AI Agent Models ────────────────────────────────────────────────
+
+model AiAgentConfig {
+  id              String   @id @default(cuid())
+  name            String   // e.g. "Agente Comercial M3"
+  systemPrompt    String   @db.Text // how the agent should behave, its role and functions
+  restrictions    String?  @db.Text // what the agent must NOT say or do
+  welcomeMessage  String?  @db.Text // first message to send when a new session starts
+  model           String   @default("gpt-4o-mini")
+  temperature     Float    @default(0.7)
+  maxTokens       Int      @default(1024)
+  departments     String   @default("comercial,suporte,financeiro") // comma-separated
+  active          Boolean  @default(true)
+  // Which instances use this agent (comma-separated instance IDs, empty = all)
+  instanceIds     String?  @db.Text
+  // Business rules as JSON (e.g. forbidden comparisons, required fields per dept)
+  businessRules   String?  @db.Text
+  // Training files (JSON array of {name, url, type})
+  trainingFiles   String?  @db.Text
+  // Training URLs (JSON array of strings)
+  trainingUrls    String?  @db.Text
+  // Response delay in seconds (simulates human typing time)
+  responseDelay   Int      @default(0)
+  // Inactivity timeout in minutes (0 = disabled) — auto-close sessions after N minutes without messages
+  inactivityTimeout Int    @default(0)
+  // Fallback model – used when the primary model fails
+  fallbackModel   String?
+  // Training mode – when enabled, session close/route sends transcript email + enables feedback
+  trainingEnabled Boolean  @default(false)
+  // Unodesk integration — enables CNPJ lookup / empresa+pessoa creation tools
+  unodeskEnabled     Boolean  @default(false)
+  // Inter-agent routing
+  isEntryPoint       Boolean  @default(false) // true = this agent handles all initial contacts
+  routingInstructions String? @db.Text // instructions on when/how to route to other agents
+  routingAgentIds    String?  @db.Text // JSON array of agent IDs that this entry point can route to (null = all)
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  sessions        AiSession[]
+
+  @@index([ownerId, active])
+}
+
+model AiSession {
+  id                 String   @id @default(cuid())
+  phone              String   // e.g. 5511999999999
+  remoteJid          String   // full JID from Evolution
+  status             String   @default("active") // active, waiting_human, human, closed
+  department         String?  // comercial, suporte, financeiro (classified by AI)
+  step               String   @default("greeting") // greeting, qualifying, collecting, handoff, resolved
+  instanceId         String   // Evolution instance ID
+  instance           EvolutionInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  agentConfigId      String
+  agentConfig        AiAgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+  assignedTo         String?  // user ID of human analyst
+  assignedUser       User?    @relation("AiSessionAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  conversationId     String?  // link to WaConversation for message history
+  conversation       WaConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  // Inter-agent routing: link to the session that was transferred from
+  parentSessionId    String?  // previous agent's session ID for context continuity
+  // Collected metadata as JSON (name, email, cnpj, product interest, etc.)
+  metadata           String?  @db.Text
+  summary            String?  @db.Text // AI-generated summary of the conversation
+  closedReason       String?  // resolved, #fim, timeout, handoff_complete
+  ownerId            String
+  owner              User     @relation("AiSessionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  startedAt          DateTime @default(now())
+  endedAt            DateTime?
+  updatedAt          DateTime @updatedAt
+  messages           AiSessionMessage[]
+
+  @@index([phone, instanceId, status])
+  @@index([status])
+  @@index([department])
+  @@index([assignedTo])
+  @@index([ownerId])
+}
+
+model AiSessionMessage {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       AiSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderType    String   // client, ai, human, system
+  content       String   @db.Text
+  messageType   String   @default("text") // text, image, audio, document, action
+  // If this is an AI message, store the raw tool-call / structured response
+  aiPayload     String?  @db.Text
+  // External WhatsApp message ID for dedup
+  externalMsgId String?
+  timestamp     DateTime @default(now())
+  // Feedback from operators (training mode)
+  feedbackStatus  String?   // "accepted" | "rejected" | null
+  feedbackComment String?   @db.Text
+  feedbackAt      DateTime?
+  feedbackBy      String?
+
+  @@index([sessionId, timestamp(sort: Desc)])
+  @@index([externalMsgId])
+}

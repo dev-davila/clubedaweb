@@ -1,0 +1,85 @@
+{
+  "pages": {
+    "/gestor/editor/[id]/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/editor/[id]/page-f97ff15e.js"
+    ],
+    "/gestor/layout": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/layout-ba8032cc.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout-daa93dab.js"
+    ],
+    "/not-found": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/not-found-982a2d93.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/page-d1cd18b3.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/_not-found/page-2eb2a985.js"
+    ],
+    "/gestor/comunicacao/agentes-ia/teste/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/comunicacao/agentes-ia/teste/page-fa30a4f3.js"
+    ],
+    "/gestor/login/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/login/page-a9a94b94.js"
+    ],
+    "/gestor/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/page-b501590d.js"
+    ],
+    "/gestor/editor/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/editor/page-d75282bd.js"
+    ],
+    "/p/[slug]/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/p/[slug]/page-d040e9d2.js"
+    ],
+    "/gestor/temas/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/temas/page-d38bb593.js"
+    ],
+    "/gestor/comunicacao/agentes-ia/configuracao/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/comunicacao/agentes-ia/configuracao/page-f74629c3.js"
+    ],
+    "/gestor/aparencia/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/aparencia/page-c8b4bd0a.js"
+    ],
+    "/gestor/comunicacao/agentes-ia/sessoes/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/gestor/comunicacao/agentes-ia/sessoes/page-33d462c1.js"
+    ],
+    "/contato/page": [
+      "static/chunks/webpack-51c29659.js",
+      "static/chunks/main-app-765a86af.js",
+      "static/chunks/app/contato/page-e31ff418.js"
+    ]
+  }
+}

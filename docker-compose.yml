@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clubedaweb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/clubedaweb?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: troque-este-valor-em-producao
+      NODE_ENV: development
+    env_file:
+      - .env
+    ports:
+      - "3001:3000"
+    volumes:
+      # Bind mount pro hot reload do Next dev — preserva node_modules do container
+      - ./app:/home/ubuntu/m3solutions_site/nextjs_space/app
+      - ./components:/home/ubuntu/m3solutions_site/nextjs_space/components
+      - ./hooks:/home/ubuntu/m3solutions_site/nextjs_space/hooks
+      - ./lib:/home/ubuntu/m3solutions_site/nextjs_space/lib
+      - ./prisma:/home/ubuntu/m3solutions_site/nextjs_space/prisma
+      - ./public:/home/ubuntu/m3solutions_site/nextjs_space/public
+      - ./scripts:/home/ubuntu/m3solutions_site/nextjs_space/scripts
+      - ./types:/home/ubuntu/m3solutions_site/nextjs_space/types
+      - ./middleware.ts:/home/ubuntu/m3solutions_site/nextjs_space/middleware.ts
+      - ./next.config.js:/home/ubuntu/m3solutions_site/nextjs_space/next.config.js
+      - ./tailwind.config.ts:/home/ubuntu/m3solutions_site/nextjs_space/tailwind.config.ts
+      - ./tsconfig.json:/home/ubuntu/m3solutions_site/nextjs_space/tsconfig.json
+    command: sh -c "yarn prisma migrate deploy 2>/dev/null || yarn prisma db push --accept-data-loss; yarn dev"
+
+volumes:
+  pgdata:

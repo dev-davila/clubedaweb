@@ -100,7 +100,6 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
-        {/* @ts-expect-error Async Server Component */}
         <ThemeInjector />
       </head>
       <body className="font-sans antialiased">
@@ -108,10 +107,8 @@ export default async function RootLayout({
         <AnalyticsTracker />
         <Providers>
           <div className="flex flex-col min-h-screen">
-            {/* @ts-expect-error Async Server Component */}
             <SiteHeader initialSiteConfig={siteConfig} />
             <main className={`flex-1 ${mainPad}`}>{children}</main>
-            {/* @ts-expect-error Async Server Component */}
             <SiteFooter initialSiteConfig={siteConfig} />
           </div>
           <WhatsAppButton />

@@ -7,6 +7,7 @@ import { ArrowRight, Lightbulb, Settings, Laptop, Monitor, FolderKanban, Headpho
 import { SectionTitle } from "@/components/section-title";
 import { IMAGES } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 
 export const metadata: Metadata = {
   title: "Soluções em TI",
@@ -107,6 +108,9 @@ function getGridClass(cols: number) {
 }
 
 export default async function SolucoesPage() {
+  const stitch = await tryRenderStitchPublicPage("services");
+  if (stitch) return stitch;
+
   // Fetch solutions and categories from DB
   let allSolutions: any[] = [];
   let allCategories: any[] = [];

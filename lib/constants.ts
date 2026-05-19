@@ -27,6 +27,9 @@ export const M3_S3_BASE_URL = "https://cdn.m3solutions.net.br";
 // Logo oficial da M3Solutions - usar em todas as ações (emails, documentos, etc.)
 export const M3_LOGO_URL = "/images/logo-m3solutions.svg";
 
+/** Reexport: chaves internacionais → URLs em português (`/quem-somos`, `/contato`, …). */
+export { SITE_PAGE_ROUTES, getPageRoute, type RequiredPageType } from "@/lib/themes/required-pages";
+
 export const SITE_CONFIG = {
   name: "M3Solutions",
   description: "Soluções em TI - Consultoria, Gestão, NOC 24x7, Cloud e muito mais",

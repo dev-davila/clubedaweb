@@ -8,7 +8,7 @@ export default function TemasPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Selecionar tema</h1>
         <p className="text-gray-600 text-sm mt-1.5 max-w-2xl">
-          Cada tema aplica de uma vez: cores, tipografia, logos, nome do site e conteúdo da home.
+          Cada tema aplica de uma vez: cores, tipografia, logos, nome do site, conteúdo da home e os cinco layouts obrigatórios (home, sobre, contato, serviços e blog).
           Você pode ajustar individualmente depois em <strong>Aparência</strong> e no <strong>Editor visual</strong>.
         </p>
       </div>

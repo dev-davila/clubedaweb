@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PostsGrid } from "@/components/noticias/posts-grid";
+import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ export default async function NoticiasPage({
 }: {
   searchParams: Promise<{ categoria?: string }>
 }) {
+  const stitch = await tryRenderStitchPublicPage("blog");
+  if (stitch) return stitch;
+
   const params = await searchParams;
   const categoryFilter = params.categoria;
 

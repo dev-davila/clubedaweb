@@ -1,0 +1,54 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-05-13T20:51:40Z",
+    "last_updated": "2026-05-14T00:00:00Z",
+    "completed": "2026-05-14T00:00:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "/Users/davilasolutions/Projects/work/davila/clubedaweb",
+  "project_knowledge": "/Users/davilasolutions/Projects/work/davila/clubedaweb/docs",
+  "completed_steps": [
+    {"step": "step_0.5", "status": "completed", "timestamp": "2026-05-13T20:51:40Z", "summary": "Loaded documentation requirements (web project type)"},
+    {"step": "step_1", "status": "completed", "timestamp": "2026-05-13T20:51:40Z", "summary": "Classified as monolith with 1 part (web)"},
+    {"step": "step_2", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Found 6 existing docs (README stub, INTEGRATION_TESTS, TEST_SUMMARY, VALIDACAO_ENDPOINTS, _bmad-output/project-context, public/docs/analise-produto-escala, docs/stitch-prompt-bitdefender)"},
+    {"step": "step_3", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Tech stack: Next.js 14.2.28 + Prisma 5.22 + Postgres 15 + NextAuth JWT + TailwindCSS + shadcn/ui"},
+    {"step": "step_4", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Conditional scan complete: APIs 190 endpoints, data 64 Prisma models + 19 enums, components 133 files (48 shadcn primitives), security & SEO & social mapped"},
+    {"step": "step_5", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Source tree documented with annotations; entry points and critical paths flagged"},
+    {"step": "step_6", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Dev setup, env vars, scripts, Docker/docker-compose, and git-pull prod model documented"},
+    {"step": "step_7", "status": "skipped", "timestamp": "2026-05-14T00:00:00Z", "summary": "Skipped: single-part monolith, no inter-part integration architecture needed"},
+    {"step": "step_8", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "architecture.md written with layered Next.js pattern, request lifecycle, integrations, risks"},
+    {"step": "step_9", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Supporting docs written: project-overview, data-models, api-contracts, component-inventory, development-guide, deployment-guide"},
+    {"step": "step_10", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Master index generated at docs/index.md"},
+    {"step": "step_11", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Validation pass: no incomplete-doc markers, all expected files present"},
+    {"step": "step_12", "status": "completed", "timestamp": "2026-05-14T00:00:00Z", "summary": "Workflow complete"}
+  ],
+  "current_step": "completed",
+  "repository_type": "monolith",
+  "project_parts": [
+    {"part_id": "web", "project_type_id": "web", "display_name": "Next.js App", "root_path": "/Users/davilasolutions/Projects/work/davila/clubedaweb", "primary_tech": "Next.js 14.2.28 + Prisma + Postgres"}
+  ],
+  "project_types": [
+    {"part_id": "web", "project_type_id": "web", "display_name": "Web Application"}
+  ],
+  "findings": {
+    "project_classification": "Next.js 14 App Router monolith, brownfield, Portuguese-speaking team",
+    "existing_docs": ["README.md", "INTEGRATION_TESTS.md", "TEST_SUMMARY.md", "VALIDACAO_ENDPOINTS.md", "docs/stitch-prompt-bitdefender.md", "_bmad-output/project-context.md", "public/docs/analise-produto-escala.md"],
+    "technology_stack": "Next.js 14.2.28, React 18.2, TypeScript 5.2.2, Prisma 5.22, Postgres 15, NextAuth 4.24, TailwindCSS 3.3, shadcn/ui, OpenAI SDK ^6, AWS S3 v3, Evolution API (WhatsApp)",
+    "counts": {"prisma_models": 64, "prisma_enums": 19, "api_route_handlers": 190, "react_components_tsx": 133, "shadcn_ui_primitives": 48, "jest_test_suites": 13, "jest_tests_passing": 152, "maintenance_scripts": 16}
+  },
+  "outputs_generated": [
+    "project-scan-report.json",
+    "docs/index.md",
+    "docs/project-overview.md",
+    "docs/architecture.md",
+    "docs/source-tree-analysis.md",
+    "docs/data-models.md",
+    "docs/api-contracts.md",
+    "docs/component-inventory.md",
+    "docs/development-guide.md",
+    "docs/deployment-guide.md"
+  ],
+  "resume_instructions": "Workflow complete. Re-run with mode=full_rescan to regenerate, or mode=deep_dive for a specific area."
+}

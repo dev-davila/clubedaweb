@@ -28,6 +28,7 @@ model User {
   aiAgentConfigs      AiAgentConfig[]
   aiSessionsOwned     AiSession[]      @relation("AiSessionOwner")
   aiSessionsAssigned  AiSession[]      @relation("AiSessionAssignee")
+  wizardSessions      WizardSession[]
 }
 
 model Post {
@@ -1453,4 +1454,44 @@ model AiSessionMessage {
 
   @@index([sessionId, timestamp(sort: Desc)])
   @@index([externalMsgId])
+}
+model WizardSession {
+  id               String    @id @default(cuid())
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id])
+  channel          String    @default("web")
+  channelRef       String?
+  state            String    @default("idle")
+  data             Json      @default("{}")
+  brief            String?
+  stitchProjectId  String?
+  stitchScreenId   String?
+  stitchHtmlUrl    String?
+  stitchHtmlCached String?
+  stitchPagesCached Json?
+  extractedTokens  Json?
+  generatedContent Json?
+  previewToken     String?   @unique
+  previewExpiresAt DateTime?
+  publishedAt      DateTime?
+  errorMessage     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  messages WizardMessage[]
+
+  @@index([userId])
+  @@index([state])
+}
+
+model WizardMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   WizardSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
 }

@@ -1,3 +1,7 @@
+import { buildRequiredPageLayouts, type ThemeLayoutKey } from "./page-layouts";
+import type { ThemeRequiredPages } from "./required-pages";
+import { assertThemeHasRequiredPages, SITE_PAGE_ROUTES } from "./required-pages";
+
 export interface ThemePreset {
   key: string;
   name: string;
@@ -37,11 +41,25 @@ export interface ThemePreset {
     features: any[];
     testimonials: any[];
   };
+  /** Layouts obrigatórios: home, sobre, contato, serviços, blog. */
+  pages: ThemeRequiredPages;
 }
 
-export const THEME_PRESETS: Record<string, ThemePreset> = {
-  m3: {
-    key: "m3",
+function attachRequiredPages(
+  key: ThemeLayoutKey,
+  siteConfig: ThemePreset["siteConfig"],
+  preset: Omit<ThemePreset, "pages">,
+): ThemePreset {
+  const full: ThemePreset = {
+    ...preset,
+    pages: buildRequiredPageLayouts(key, siteConfig.company_name, siteConfig.tagline),
+  };
+  assertThemeHasRequiredPages(full.key, full.pages);
+  return full;
+}
+
+const M3_PRESET_BASE = {
+  key: "m3",
     name: "M3Solutions (Original)",
     tagline: "Soluções completas em TI para sua empresa",
     description: "Tema corporativo azul, foco em consultoria e serviços de TI.",
@@ -79,9 +97,9 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
         titleHighlight: "TI",
         subtitle: "Consultoria, suporte, gestão, NOC 24x7, multicloud e segurança. Tudo o que sua empresa precisa para crescer com tecnologia.",
         ctaPrimaryText: "Fale com um especialista",
-        ctaPrimaryLink: "/contato",
+        ctaPrimaryLink: SITE_PAGE_ROUTES.contact,
         ctaSecondaryText: "Conheça nossas soluções",
-        ctaSecondaryLink: "/solucoes",
+        ctaSecondaryLink: SITE_PAGE_ROUTES.services,
         backgroundImage: "https://cdn.abacus.ai/images/9090133f-28b9-4df4-92a8-37fd51d6f0ad.png",
         stats: [
           { value: "5597+", label: "Clientes atendidos" },
@@ -119,10 +137,10 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
         { name: "Paulo Mendes", role: "Gerente de Operações", company: "Fintech Solutions", content: "A consultoria em segurança foi fundamental para nossa adequação à LGPD.", rating: 5 }
       ]
     }
-  },
+};
 
-  bitdefender: {
-    key: "bitdefender",
+const BITDEFENDER_PRESET_BASE = {
+  key: "bitdefender",
     name: "Bitdefender",
     tagline: "Cybersegurança que se antecipa às ameaças",
     description: "Tema vermelho focado em produto Bitdefender — antimalware, EDR e XDR.",
@@ -160,7 +178,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
         titleHighlight: "antecipa",
         subtitle: "Bitdefender GravityZone — antimalware, EDR e XDR de classe mundial. Proteção em camadas para endpoints, servidores e cargas de trabalho na nuvem.",
         ctaPrimaryText: "Solicitar orçamento",
-        ctaPrimaryLink: "/contato",
+        ctaPrimaryLink: SITE_PAGE_ROUTES.contact,
         ctaSecondaryText: "Ver edições",
         ctaSecondaryLink: "/p/bitdefender-business-security",
         backgroundImage: "https://cdn.abacus.ai/images/9090133f-28b9-4df4-92a8-37fd51d6f0ad.png",
@@ -200,7 +218,15 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
         { name: "Paulo Mendes", role: "Gerente de Operações", company: "Fintech Solutions", content: "Compliance LGPD virou trivial — relatórios prontos, logs detalhados, e o XDR cruza endpoint com identidade.", rating: 5 }
       ]
     }
-  }
+};
+
+export const THEME_PRESETS: Record<string, ThemePreset> = {
+  m3: attachRequiredPages("m3", M3_PRESET_BASE.siteConfig, M3_PRESET_BASE as Omit<ThemePreset, "pages">),
+  bitdefender: attachRequiredPages(
+    "bitdefender",
+    BITDEFENDER_PRESET_BASE.siteConfig,
+    BITDEFENDER_PRESET_BASE as Omit<ThemePreset, "pages">,
+  ),
 };
 
 export const THEME_LIST: ThemePreset[] = Object.values(THEME_PRESETS);

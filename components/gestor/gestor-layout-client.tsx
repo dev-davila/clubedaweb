@@ -10,6 +10,7 @@ import {
   MessageSquare,
   LogOut,
   Menu,
+  MenuSquare,
   X,
   ChevronRight,
   ChevronDown,
@@ -60,18 +61,22 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { label: "Dashboard", href: "/gestor", icon: LayoutDashboard },
-  // Gestão
-  { type: "divider", label: "Gestão", roles: ["admin"] },
-  { label: "Edição da Home", href: "/gestor/home", icon: Home, roles: ["admin"] },
-  { label: "Soluções", href: "/gestor/solucoes", icon: Server, roles: ["admin"] },
-  { label: "Catálogo", href: "/gestor/catalogo", icon: Package, roles: ["admin"] },
-  { label: "Institucional", href: "/gestor/institucional", icon: FileText, roles: ["admin"] },
-  { label: "Contatos", href: "/gestor/contatos", icon: Inbox, roles: ["admin"] },
-  { label: "Parceiros", href: "/gestor/parceiros", icon: Users, roles: ["admin"] },
-  { label: "Configurações", href: "/gestor/configuracoes", icon: Settings, roles: ["admin"] },
+  // Site
+  { type: "divider", label: "Site", roles: ["admin"] },
+  { label: "Páginas", href: "/gestor/paginas", icon: FileText, roles: ["admin"] },
+  { label: "Menus", href: "/gestor/menus", icon: MenuSquare, roles: ["admin"] },
+  { label: "Configurar site (Wizard)", href: "/gestor/wizard", icon: Zap, roles: ["admin"] },
   { label: "Temas", href: "/gestor/temas", icon: Layers, roles: ["admin"] },
   { label: "Aparência", href: "/gestor/aparencia", icon: PenTool, roles: ["admin"] },
   { label: "Editor visual", href: "/gestor/editor", icon: Cog, roles: ["admin"] },
+  // Itens ocultos do wizard (mantidos no código, escondidos do menu) — descomente pra reativar
+  // { label: "Edição da Home", href: "/gestor/home", icon: Home, roles: ["admin"] },
+  // { label: "Soluções", href: "/gestor/solucoes", icon: Server, roles: ["admin"] },
+  // { label: "Catálogo", href: "/gestor/catalogo", icon: Package, roles: ["admin"] },
+  // { label: "Institucional", href: "/gestor/institucional", icon: FileText, roles: ["admin"] },
+  // { label: "Contatos", href: "/gestor/contatos", icon: Inbox, roles: ["admin"] },
+  // { label: "Parceiros", href: "/gestor/parceiros", icon: Users, roles: ["admin"] },
+  // { label: "Configurações", href: "/gestor/configuracoes", icon: Settings, roles: ["admin"] },
   // Blog
   { type: "divider", label: "Blog", roles: ["admin", "operador", "cliente"] },
   { label: "Posts", href: "/gestor/posts", icon: FileText, roles: ["admin", "operador", "cliente"] },

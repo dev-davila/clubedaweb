@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { SITE_PAGE_ROUTES } from "@/lib/themes/required-pages";
 
 // POST - Seed menus from current hardcoded data
 export async function POST(request: NextRequest) {
@@ -11,10 +12,21 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-    // Check if menus already exist
+    let force = false;
+    try {
+      const body = await request.json();
+      force = Boolean(body?.force);
+    } catch {
+      /* empty body */
+    }
+
     const existing = await prisma.navigationMenu.count();
-    if (existing > 0) {
-      return NextResponse.json({ message: "Menus já existem. Use a interface para editar." });
+    if (existing > 0 && !force) {
+      return NextResponse.json({ message: "Menus já existem. Use a interface para editar ou force=true." });
+    }
+    if (force && existing > 0) {
+      await prisma.navigationItem.deleteMany({});
+      await prisma.navigationMenu.deleteMany({});
     }
 
     // ========== HEADER MENU ==========
@@ -22,11 +34,12 @@ export async function POST(request: NextRequest) {
       data: { name: "header", label: "Menu Principal" }
     });
 
+    const R = SITE_PAGE_ROUTES;
     const headerItems = [
-      { label: "Home", url: "/", children: [] },
+      { label: "Home", url: R.home, children: [] },
       {
         label: "Soluções",
-        url: "/solucoes",
+        url: R.services,
         children: [
           { label: "Segurança Cibernética", url: "/solucoes/seguranca" },
           { label: "Backup e Disaster Recovery", url: "/solucoes/backup" },
@@ -55,14 +68,14 @@ export async function POST(request: NextRequest) {
         label: "Institucional",
         url: "#",
         children: [
-          { label: "Quem Somos", url: "/quem-somos" },
+          { label: "Sobre nós", url: R.about },
           { label: "Nossos Parceiros", url: "/nossos-parceiros" },
           { label: "Trabalhe Conosco", url: "/trabalhe-conosco" },
           { label: "Missão, Visão e Valores", url: "/missao-visao-e-valores" }
         ]
       },
-      { label: "Notícias", url: "/noticias", children: [] },
-      { label: "Contato", url: "/contato", children: [] }
+      { label: "Blog", url: R.blog, children: [] },
+      { label: "Contato", url: R.contact, children: [] }
     ];
 
     for (let i = 0; i < headerItems.length; i++) {
@@ -124,12 +137,12 @@ export async function POST(request: NextRequest) {
       data: { name: "footer-institucional", label: "Institucional" }
     });
     const instLinks = [
-      { label: "Quem Somos", url: "/quem-somos" },
+      { label: "Sobre nós", url: R.about },
       { label: "Nossos Parceiros", url: "/nossos-parceiros" },
       { label: "Trabalhe Conosco", url: "/trabalhe-conosco" },
       { label: "Missão, Visão e Valores", url: "/missao-visao-e-valores" },
-      { label: "Notícias", url: "/noticias" },
-      { label: "Contato", url: "/contato" }
+      { label: "Blog", url: R.blog },
+      { label: "Contato", url: R.contact }
     ];
     for (let i = 0; i < instLinks.length; i++) {
       await prisma.navigationItem.create({

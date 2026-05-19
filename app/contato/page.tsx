@@ -3,6 +3,7 @@ import { Phone, Mail, MapPin, Clock, MessageCircle } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
 import { SITE_CONFIG } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ async function getSiteConfig() {
 }
 
 export default async function ContatoPage() {
+  const stitch = await tryRenderStitchPublicPage("contact");
+  if (stitch) return stitch;
+
   const dbConfig = await getSiteConfig();
   
   const phone = dbConfig.contact_phone || SITE_CONFIG.phone;

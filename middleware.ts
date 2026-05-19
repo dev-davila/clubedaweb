@@ -36,20 +36,38 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
-  // CSP (Content Security Policy) - customizado para permitir analytics
-  const cspHeader = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apps.abacus.ai https://www.googletagmanager.com https://www.google-analytics.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: https: blob:",
-    "media-src 'self' data: blob:",
-    "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://*.m3solutions.net.br https://*.m3solutions.com.br https://www.google-analytics.com https://*.analytics.google.com https://apis.google.com https://graph.facebook.com https://*.s3.*.amazonaws.com https://*.s3.amazonaws.com https://s3.*.amazonaws.com",
-    "frame-src 'self' https://www.google.com https://maps.google.com",
-    "frame-ancestors 'self'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join('; ');
+  // CSP (Content Security Policy) - customizado para permitir analytics.
+  // Em /preview/* relaxamos pra o HTML do Stitch poder carregar Tailwind CDN,
+  // Google Fonts, Material Symbols, etc. — o iframe é sandboxed, então o
+  // blast radius fica contido nessa rota.
+  const isPreviewRoute = pathname.startsWith('/preview/');
+  const cspHeader = isPreviewRoute
+    ? [
+        "default-src 'self' https: data: blob:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+        "style-src 'self' 'unsafe-inline' https:",
+        "img-src 'self' data: https: blob:",
+        "media-src 'self' data: https: blob:",
+        "font-src 'self' data: https:",
+        "connect-src 'self' https:",
+        "frame-src 'self' https:",
+        "frame-ancestors 'self'",
+        "base-uri 'self'",
+        "form-action 'self' https:",
+      ].join('; ')
+    : [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apps.abacus.ai https://www.googletagmanager.com https://www.google-analytics.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "img-src 'self' data: https: blob:",
+        "media-src 'self' data: blob:",
+        "font-src 'self' https://fonts.gstatic.com",
+        "connect-src 'self' https://*.m3solutions.net.br https://*.m3solutions.com.br https://www.google-analytics.com https://*.analytics.google.com https://apis.google.com https://graph.facebook.com https://*.s3.*.amazonaws.com https://*.s3.amazonaws.com https://s3.*.amazonaws.com",
+        "frame-src 'self' https://www.google.com https://maps.google.com",
+        "frame-ancestors 'self'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ].join('; ');
   response.headers.set('Content-Security-Policy', cspHeader);
 
   // CORS para API (se necessário)

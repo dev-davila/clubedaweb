@@ -1,5 +1,6 @@
 import { getHomeConfig } from "@/lib/home-config";
 import { getActiveLayout } from "@/lib/active-layout";
+import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 
 // Bitdefender redesign (default of current build)
 import { HeroSection as BdHero } from "@/components/home-bd/hero-section";
@@ -26,6 +27,9 @@ import { CtaSection as M3Cta } from "@/components/home-m3/cta-section";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const stitch = await tryRenderStitchPublicPage("home");
+  if (stitch) return stitch;
+
   const homeConfig = await getHomeConfig();
   const layout = await getActiveLayout();
 

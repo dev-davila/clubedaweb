@@ -9,6 +9,7 @@ import { IMAGES, SITE_CONFIG } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { getInstitutionalPage } from "@/lib/institutional";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 
 async function getSiteConfig() {
   try {
@@ -45,6 +46,9 @@ const defaultStats = [
 ];
 
 export default async function QuemSomosPage() {
+  const stitch = await tryRenderStitchPublicPage("about");
+  if (stitch) return stitch;
+
   const dbConfig = await getSiteConfig();
   const pageData = await getInstitutionalPage("quem-somos");
 

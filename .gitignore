@@ -30,6 +30,17 @@ yarn-error.log*
 .env*.local
 .env.development
 .env.production
+.env.bak
+.env.docker-backup
+.env.*-backup
+
+# Local tooling / outputs (não vão pro repo)
+.agents/
+.claude/
+_bmad/
+_bmad-output/
+tmp/
+CURSOR.md
 
 # Vercel
 .vercel

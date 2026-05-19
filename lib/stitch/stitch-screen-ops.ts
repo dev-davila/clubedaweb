@@ -114,15 +114,32 @@ export async function generateScreenVariants(
 }
 
 function tokensToDesignTheme(tokens: ExtractedTokens): Record<string, unknown> {
+  const isDark = tokens.colorMode === "dark";
+  // Mapa de fonte → enum do Stitch SDK
+  const fontHint = (tokens.fontHeading || "").toLowerCase();
+  const headlineFont = fontHint.includes("playfair")
+    ? "PLAYFAIR_DISPLAY"
+    : fontHint.includes("fraunces")
+      ? "FRAUNCES"
+      : fontHint.includes("space grotesk")
+        ? "SPACE_GROTESK"
+        : fontHint.includes("dm serif")
+          ? "DM_SERIF_DISPLAY"
+          : fontHint.includes("source serif")
+            ? "SOURCE_SERIF_PRO"
+            : fontHint.includes("newsreader")
+              ? "NEWSREADER"
+              : "INTER";
   return {
-    colorMode: "LIGHT",
+    colorMode: isDark ? "DARK" : "LIGHT",
     overridePrimaryColor: tokens.primaryColor,
     overrideSecondaryColor: tokens.secondaryColor,
     overrideTertiaryColor: tokens.accentColor,
     overrideNeutralColor: tokens.surfaceColor,
-    backgroundLight: tokens.backgroundColor,
+    backgroundLight: isDark ? undefined : tokens.backgroundColor,
+    backgroundDark: isDark ? tokens.backgroundColor : undefined,
     bodyFont: "INTER",
-    headlineFont: "INTER",
+    headlineFont,
     roundness: tokens.borderRadius.includes("full")
       ? "ROUND_FULL"
       : tokens.borderRadius.includes("xl")

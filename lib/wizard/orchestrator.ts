@@ -2,9 +2,7 @@ import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
-import { standardizeSiteChrome } from "@/lib/stitch/standardize-chrome";
-import { sanitizeStitchHtml, setChromeSourceFromHome } from "@/lib/stitch/sanitize-stitch-html";
-import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
+import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -397,23 +395,15 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
       throw new Error(`Publicação bloqueada — ${parts.join("; ")}. Aprove as 5 páginas antes.`);
     }
 
+    // Cada página é publicada COMO O STITCH GEROU. Só passamos pelo sanitize
+    // BÁSICO (consertar HTML quebrado tipo <style> dentro de <script>, ordem
+    // de tags do head pro Tailwind CDN funcionar). NÃO substituímos header/
+    // footer/CSS — isso descaracteriza o trabalho do Stitch.
     let polished: Record<RequiredPageType, string> = { ...typed };
-    if (polished.home) {
-      setChromeSourceFromHome(sanitizeStitchHtml(polished.home));
-    }
     for (const t of REQUIRED_PAGE_TYPES) {
       const html = polished[t];
       if (!html) continue;
-      polished[t] =
-        t === "home"
-          ? sanitizeStitchHtml(html)
-          : sanitizeStitchHtml(html, { pageType: t, applyStandardChrome: true });
-    }
-    if (polished.home) {
-      polished = standardizeSiteChrome(polished);
-      // Propaga <style> e tailwind-config da home pras outras páginas,
-      // garantindo cores/fontes idênticas em todo o site publicado.
-      polished = standardizePageStyling(polished) as Record<RequiredPageType, string>;
+      polished[t] = sanitizeStitchHtml(html);
     }
 
     await publishStitchPages(polished);

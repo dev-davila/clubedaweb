@@ -85,6 +85,8 @@ export interface ExtractedTokens {
   fontHeading: string;
   borderRadius: string;
   styleType: string;
+  /** "dark" ou "light" — define se design system aplicado e prompts mandam dark mode. */
+  colorMode?: "dark" | "light";
 }
 
 export type WizardSideEffect =

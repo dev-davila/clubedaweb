@@ -196,10 +196,15 @@ export function extractTokensFromHtml(html: string): ExtractedTokens {
     pickTop(colorVotes, (h) => !isNeutralHex(h) && h !== primary && h !== secondary) ??
     rotateHue(primary, 120);
 
-  const textColor = pickTop(colorVotes, (h) => isNeutralHex(h) && h !== "#FFFFFF") ?? "#1F2937";
-  const surfaceColor = "#F9FAFB";
-  const backgroundColor = "#FFFFFF";
-  const textLightColor = "#6B7280";
+  // Detecta colorMode pelo HTML: se body tem bg-slate-900/950/zinc-900 etc OU
+  // <body class="...dark..."> OU style body{background:#0X...} → dark.
+  const isDark = detectDarkMode(html);
+  const backgroundColor = isDark ? "#0F172A" : "#FFFFFF";
+  const surfaceColor = isDark ? "#1E293B" : "#F9FAFB";
+  const textColor = isDark
+    ? "#F8FAFC"
+    : pickTop(colorVotes, (h) => isNeutralHex(h) && h !== "#FFFFFF") ?? "#1F2937";
+  const textLightColor = isDark ? "#94A3B8" : "#6B7280";
 
   const fontFamily = detectFont(html);
   const radius = detectRadius(html);
@@ -215,8 +220,26 @@ export function extractTokensFromHtml(html: string): ExtractedTokens {
     fontPrimary: fontFamily,
     fontHeading: fontFamily,
     borderRadius: radius,
-    styleType: "corporate",
+    styleType: isDark ? "tech-dark" : "corporate",
+    colorMode: isDark ? "dark" : "light",
   };
+}
+
+function detectDarkMode(html: string): boolean {
+  // 1. <body> ou <main> com classe bg-slate-900/950, bg-zinc-900, bg-gray-900, bg-neutral-900, bg-stone-900
+  if (/<body[^>]*class=["'][^"']*\bbg-(slate|zinc|gray|neutral|stone)-(8|9)\d\d\b/i.test(html)) return true;
+  // 2. body { background-color: #0X... } no <style>
+  const bodyStyle = html.match(/<style[\s\S]*?body\s*\{[^}]*background(-color)?\s*:\s*(#[0-9a-f]{6}|rgb[^;]+)/i);
+  if (bodyStyle) {
+    const bg = bodyStyle[2].toLowerCase();
+    if (/^#0[0-9a-f]/.test(bg) || /^#1[0-9a-f]/.test(bg)) return true;
+  }
+  // 3. <html class="dark"> ou <body class="dark">
+  if (/<(html|body)[^>]*\bclass=["'][^"']*\bdark\b/i.test(html)) return true;
+  // 4. Maior parte do conteúdo usa text-white / text-slate-50 — sinal forte
+  const whiteTextHits = (html.match(/\btext-(white|slate-50|slate-100|gray-50|gray-100|zinc-50|neutral-50)\b/gi) ?? []).length;
+  if (whiteTextHits >= 5) return true;
+  return false;
 }
 
 /**
@@ -246,17 +269,28 @@ export function fallbackTokens(prompt: string): ExtractedTokens {
   else if (/(cinza|gray|grey|prata|silver)/.test(lower)) primary = "#475569";
   else if (/(azul|blue)/.test(lower)) primary = "#2563EB";
 
+  // Heurística de colorMode: tech/SaaS/varejo/saas/dark → dark; resto → light.
+  const isDark =
+    /(dark|escuro|preto|black|noturno|night|cyberpunk|hacker)/.test(lower) ||
+    /(saas|software|tech|tecnolog|startup|api|cyber|seguranç|m3solutions|cloud|servidor|infraestrutura)/.test(lower);
+  const colorMode: "dark" | "light" = isDark ? "dark" : "light";
+  const backgroundColor = isDark ? "#0F172A" : "#FFFFFF";
+  const surfaceColor = isDark ? "#1E293B" : "#F9FAFB";
+  const textColor = isDark ? "#F8FAFC" : "#1F2937";
+  const textLightColor = isDark ? "#94A3B8" : "#6B7280";
+
   return {
     primaryColor: primary,
     secondaryColor: darkenHex(primary, 0.22),
     accentColor: rotateHue(primary, 140),
-    textColor: "#1F2937",
-    textLightColor: "#6B7280",
-    backgroundColor: "#FFFFFF",
-    surfaceColor: "#F9FAFB",
+    textColor,
+    textLightColor,
+    backgroundColor,
+    surfaceColor,
     fontPrimary: "Inter, system-ui, sans-serif",
     fontHeading: "Inter, system-ui, sans-serif",
     borderRadius: "12px",
-    styleType: "corporate",
+    styleType: isDark ? "tech-dark" : "corporate",
+    colorMode,
   };
 }

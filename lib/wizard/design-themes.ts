@@ -7,6 +7,8 @@
 
 export interface SegmentTheme {
   name: string;
+  /** Modo padrão de cor do segmento — afeta tokens, prompt do Stitch e CSS gerado. */
+  colorMode: "dark" | "light";
   palette: {
     primary: string;
     accent: string;
@@ -24,6 +26,7 @@ export interface SegmentTheme {
 const THEMES: Record<string, SegmentTheme> = {
   advocacia: {
     name: "Advocacia Premium",
+    colorMode: "light",
     palette: {
       primary: "#1E3A5F",
       accent: "#C9A84C",
@@ -39,6 +42,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   saude: {
     name: "Saúde Acolhedora",
+    colorMode: "light",
     palette: {
       primary: "#0F7B8A",
       accent: "#7FC8A9",
@@ -54,6 +58,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   tech: {
     name: "Tech / SaaS Moderno",
+    colorMode: "dark",
     palette: {
       primary: "#0B1020",
       accent: "#22D3EE",
@@ -69,6 +74,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   financeiro: {
     name: "Contábil / Financeiro",
+    colorMode: "light",
     palette: {
       primary: "#0F3D2E",
       accent: "#D4AF37",
@@ -84,6 +90,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   educacao: {
     name: "Educação / Cursos",
+    colorMode: "light",
     palette: {
       primary: "#2D2A6E",
       accent: "#F59E0B",
@@ -99,6 +106,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   varejo: {
     name: "Varejo / E-commerce",
+    colorMode: "dark",
     palette: {
       primary: "#111111",
       accent: "#E11D48",
@@ -114,6 +122,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   gastronomia: {
     name: "Gastronomia / Padaria",
+    colorMode: "light",
     palette: {
       primary: "#7C2D12",
       accent: "#F59E0B",
@@ -129,6 +138,7 @@ const THEMES: Record<string, SegmentTheme> = {
   },
   default: {
     name: "Corporativo Neutro",
+    colorMode: "light",
     palette: {
       primary: "#1F2937",
       accent: "#2563EB",
@@ -168,8 +178,28 @@ export function pickTheme(industry: string | null | undefined): SegmentTheme {
  * por um direcionamento concreto.
  */
 export function themeBlock(theme: SegmentTheme): string {
+  const isDark = theme.colorMode === "dark";
+  const modeLines = isDark
+    ? [
+        `### MODO DE COR: **DARK** (esse é OBRIGATÓRIO — ignore preferência genérica)`,
+        `- body background: **${theme.palette.darkBg}** (escuro)`,
+        `- Hero deve ter fundo escuro (mesma cor do body) com texto claro`,
+        `- Cards: variações sutis do escuro (slate-900, slate-800) com bordas sutis`,
+        `- Texto principal: branco/cinza-claro (#F8FAFC / slate-50)`,
+        `- Texto secundário: cinza médio (#94A3B8 / slate-400)`,
+        `- Accent colorido (${theme.palette.accent}) para CTAs e destaques`,
+      ]
+    : [
+        `### MODO DE COR: **LIGHT** (esse é o padrão do segmento)`,
+        `- body background: **${theme.palette.lightBg}** (claro)`,
+        `- Hero pode ter fundo claro com leve gradiente, OU bloco escuro contrastante de destaque`,
+        `- Cards: brancos com sombra sutil`,
+        `- Texto principal: cinza escuro (slate-900 / #0F172A)`,
+        `- Texto secundário: cinza médio (slate-600)`,
+      ];
   return [
     `### Design system sugerido (segmento: ${theme.name})`,
+    ...modeLines,
     `Paleta:`,
     `  - Primária: ${theme.palette.primary}`,
     `  - Accent: ${theme.palette.accent}`,

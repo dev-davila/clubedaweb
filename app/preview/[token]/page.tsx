@@ -12,7 +12,6 @@ import {
   parseSessionStitchPages,
   resolvePreviewPageType,
 } from "@/lib/wizard/stitch-session-pages";
-import { applyHomeStyling, extractHomeStyling } from "@/lib/stitch/share-page-styling";
 
 const PAGE_LABEL: Record<string, string> = {
   home: "Home",
@@ -47,18 +46,10 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   if (!pageType) notFound();
 
   const pages = parseSessionStitchPages(session);
-  const rawHtml = pages[pageType]?.trim();
-  if (!rawHtml) notFound();
-
-  // Propaga estilos da home (CSS + tailwind-config + fontes) pras páginas
-  // secundárias, pra que header/footer renderizem visualmente idênticos.
-  // Sem isso, Stitch produz tailwind-config diferente por página → cores
-  // divergentes entre pages no preview.
-  const homeHtml = pages.home;
-  const html =
-    pageType !== "home" && homeHtml
-      ? applyHomeStyling(rawHtml, extractHomeStyling(homeHtml))
-      : rawHtml;
+  const html = pages[pageType]?.trim();
+  if (!html) notFound();
+  // Cada página é servida fiel ao que o Stitch gerou — sem propagar styling
+  // entre páginas. Cada uma tem seu próprio CSS, tailwind-config e fontes.
 
   const { answers } = unpackSessionData(session.data);
   const companyName = answers.companyName?.trim() || "Sua marca";

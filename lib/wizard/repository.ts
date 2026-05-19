@@ -110,12 +110,16 @@ export async function appendMessage(sessionId: string, role: "user" | "assistant
   });
 }
 
-export async function listMessages(sessionId: string, limit = 50) {
-  return prisma.wizardMessage.findMany({
+export async function listMessages(sessionId: string, limit = 200) {
+  // Pega as N MAIS RECENTES (DESC) e reverte para ordem cronológica.
+  // Com asc+take, conversas longas perdiam as últimas mensagens — a UI
+  // mostrava só as N primeiras e a pergunta atual da IA sumia.
+  const rows = await prisma.wizardMessage.findMany({
     where: { sessionId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: limit,
   });
+  return rows.reverse();
 }
 
 export async function updateSnapshot(sessionId: string, snapshot: WizardSnapshot, extra?: Partial<WizardSessionRow>) {

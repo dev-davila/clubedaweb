@@ -109,8 +109,14 @@ async function runPageGeneration(
   let result;
   try {
     const homeHtmlSample = pageType === "home" ? null : (existingPages.home ?? null);
+    // "template" é marca de fallback emergency anterior — não passa pro Stitch
+    // (entidade não existe lá e quebra). null → Stitch cria projeto novo.
+    const projectIdForStitch =
+      row?.stitchProjectId && row.stitchProjectId !== "template" && !row.stitchProjectId.startsWith("fallback")
+        ? row.stitchProjectId
+        : null;
     result = await generateWizardPage(pageType, snapshot.answers, siteCopy, {
-      existingProjectId: row?.stitchProjectId,
+      existingProjectId: projectIdForStitch,
       existingScreenId: mode !== "generate" ? existingScreenId : null,
       designSystemId: snapshot.stitchDesignSystemId ?? null,
       mode,

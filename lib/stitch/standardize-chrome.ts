@@ -30,16 +30,50 @@ export interface SiteChrome {
   footer: string;
 }
 
-/** Extrai header (shell) e footer da home — fonte única do chrome. */
+/** Extrai header (shell) e footer da home — fonte única do chrome.
+ *
+ * Stitch é inconsistente em emitir data-block="header"/"footer". Quando faltar,
+ * fazemos fallback pra <header>/<footer> genéricos, depois pra <nav> com links
+ * de páginas (caso o Stitch tenha posto o navbar dentro de <main>). Só lança
+ * se realmente não encontrar nada utilizável.
+ */
 export function extractChromeFromHome(homeHtml: string): SiteChrome {
-  const headerMatch = homeHtml.match(CHROME_HEADER_RE);
-  const footerMatch = homeHtml.match(CHROME_FOOTER_RE);
-  if (!headerMatch?.[0] || !footerMatch?.[0]) {
-    throw new Error("Home HTML sem data-block header/footer");
+  let headerHtml =
+    homeHtml.match(CHROME_HEADER_RE)?.[0] ??
+    homeHtml.match(GENERIC_HEADER_RE)?.[0] ??
+    null;
+
+  // Se não tem <header> mas tem <nav> com múltiplos page links, promove a header
+  if (!headerHtml) {
+    const navRegex = /<nav[\s\S]*?<\/nav>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = navRegex.exec(homeHtml)) !== null) {
+      const pageLinks = (
+        m[0].match(/href="(home|sobre|about|servicos|services|contato|contact|blog|noticias|quem-somos|solucoes)\.?html?"/gi) ??
+        m[0].match(/href="\/(quem-somos|solucoes|noticias|contato|sobre|servicos|contact|about|blog)"/gi) ??
+        []
+      ).length;
+      if (pageLinks >= 2) {
+        headerHtml = `<header class="sticky top-0 z-50 bg-white shadow-sm">${m[0]}</header>`;
+        break;
+      }
+    }
   }
+
+  const footerHtml =
+    homeHtml.match(CHROME_FOOTER_RE)?.[0] ??
+    homeHtml.match(GENERIC_FOOTER_RE)?.[0] ??
+    null;
+
+  if (!headerHtml || !footerHtml) {
+    throw new Error(
+      `Home HTML sem chrome detectável (header=${!!headerHtml}, footer=${!!footerHtml})`,
+    );
+  }
+
   return {
-    headerShell: headerMatch[0],
-    footer: footerMatch[0],
+    headerShell: headerHtml,
+    footer: footerHtml,
   };
 }
 

@@ -8,6 +8,7 @@
  */
 import { NextRequest } from "next/server";
 import { findByPreviewToken } from "@/lib/wizard/repository";
+import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import {
   parseSessionStitchPages,
   resolvePreviewPageType,
@@ -35,10 +36,11 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const pages = parseSessionStitchPages(session);
-  const html = pages[pageType]?.trim();
-  if (!html) {
+  const raw = pages[pageType]?.trim();
+  if (!raw) {
     return new Response("HTML da página não disponível", { status: 404 });
   }
+  const html = sanitizeStitchHtml(raw);
 
   return new Response(html, {
     status: 200,

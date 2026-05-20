@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
+import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import { REQUIRED_PAGE_TYPES } from "@/lib/themes/required-pages";
 import { findByPreviewToken } from "@/lib/wizard/repository";
 import { previewUrlForPage } from "@/lib/wizard/prompts";
@@ -46,8 +47,9 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   if (!pageType) notFound();
 
   const pages = parseSessionStitchPages(session);
-  const html = pages[pageType]?.trim();
-  if (!html) notFound();
+  const raw = pages[pageType]?.trim();
+  if (!raw) notFound();
+  const html = sanitizeStitchHtml(raw);
   // Cada página é servida fiel ao que o Stitch gerou — sem propagar styling
   // entre páginas. Cada uma tem seu próprio CSS, tailwind-config e fontes.
 

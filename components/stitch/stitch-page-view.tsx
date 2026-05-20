@@ -10,7 +10,7 @@ interface StitchPageViewProps {
   fullViewport?: boolean;
 }
 
-const IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-forms";
+const IFRAME_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation-by-user-activation";
 
 export function StitchPageView({ html, banner, fullViewport = false }: StitchPageViewProps) {
   const srcDoc = ensurePreviewHtml(html);

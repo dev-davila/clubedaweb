@@ -53,7 +53,70 @@ export function sanitizeStitchHtml(
     doc = replaceChromeInHtml(doc, header, cachedChrome.footer);
   }
 
+  doc = rewriteStitchLinks(doc);
+
   return doc.trim();
+}
+
+/**
+ * Stitch gera muitos `<a href="#">`, `href="#contato"`, `href="#servicos"` no
+ * lugar de URLs reais das páginas obrigatórias. Reescrevemos os padrões
+ * conhecidos pra rotas em PT-BR do site público.
+ */
+const ANCHOR_TO_ROUTE: Record<string, string> = {
+  // Home
+  top: "/",
+  inicio: "/",
+  "início": "/",
+  home: "/",
+  // Sobre
+  sobre: "/quem-somos",
+  "quem-somos": "/quem-somos",
+  about: "/quem-somos",
+  // Serviços
+  servicos: "/solucoes",
+  "serviços": "/solucoes",
+  solucoes: "/solucoes",
+  "soluções": "/solucoes",
+  services: "/solucoes",
+  // Contato
+  contato: "/contato",
+  contact: "/contato",
+  // Blog
+  blog: "/noticias",
+  noticias: "/noticias",
+  "notícias": "/noticias",
+};
+
+function rewriteStitchLinks(html: string): string {
+  // 1. Reescreve hrefs que apontam pra # ou anchors conhecidos
+  let out = html.replace(/href=(["'])([^"']*)\1/gi, (match, q, val) => {
+    const v = val.trim();
+    if (!v || v === "#") return `href=${q}/contato${q}`;
+    if (v.startsWith("#")) {
+      const anchor = v.slice(1).toLowerCase();
+      const mapped = ANCHOR_TO_ROUTE[anchor];
+      if (mapped) return `href=${q}${mapped}${q}`;
+      // Âncora desconhecida (ex: #metodo, #faq) — mantém pra navegação interna
+      return match;
+    }
+    return match;
+  });
+
+  // 2. iframe srcDoc é sandboxed: clicar em <a href="/foo"> tenta navegar
+  // DENTRO do iframe (que não tem rota /foo). Adiciona target="_top" pra
+  // sair do iframe e levar a página inteira. Não toca em # anchors (devem
+  // continuar internas) nem em mailto:/tel: nem em links já com target.
+  out = out.replace(/<a\b([^>]*?)>/gi, (match, attrs) => {
+    if (/\btarget\s*=/i.test(attrs)) return match;
+    const hrefMatch = attrs.match(/href=(["'])([^"']*)\1/i);
+    if (!hrefMatch) return match;
+    const href = hrefMatch[2].trim();
+    if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) return match;
+    return `<a${attrs} target="_top">`;
+  });
+
+  return out;
 }
 
 /** Reconstrói <head> na ordem correta: meta → fonts → config → CDN → style */

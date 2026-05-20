@@ -225,7 +225,7 @@ export function extractTokensFromHtml(html: string): ExtractedTokens {
   };
 }
 
-function detectDarkMode(html: string): boolean {
+export function detectDarkMode(html: string): boolean {
   // 1. <body> ou <main> com classe bg-slate-900/950, bg-zinc-900, bg-gray-900, bg-neutral-900, bg-stone-900
   if (/<body[^>]*class=["'][^"']*\bbg-(slate|zinc|gray|neutral|stone)-(8|9)\d\d\b/i.test(html)) return true;
   // 2. body { background-color: #0X... } no <style>

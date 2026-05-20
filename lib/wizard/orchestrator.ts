@@ -3,10 +3,12 @@ import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
 import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
+import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
-import { fallbackTokens } from "@/lib/stitch/theme-extractor";
+import { detectDarkMode, fallbackTokens } from "@/lib/stitch/theme-extractor";
+import { detectUserColorMode } from "@/lib/wizard/design-themes";
 import {
   appendMessage,
   findOrCreateSession,
@@ -356,6 +358,27 @@ export async function restartSession(sessionId: string) {
   return ensureGreeting(sessionId);
 }
 
+/**
+ * Escolhe a página cujo HTML tem o `colorMode` mais próximo do que o cliente
+ * pediu. Se ele pediu dark, retorna a primeira página dark; se light, a
+ * primeira light; sem preferência, retorna sempre "home" (mantém comportamento
+ * anterior). Garante que a referência exista e tenha HTML.
+ */
+function pickReferencePage(
+  pages: Record<RequiredPageType, string>,
+  userMode: "dark" | "light" | null,
+): RequiredPageType {
+  const exists = (t: RequiredPageType) => !!pages[t]?.trim();
+  if (!userMode) return exists("home") ? "home" : (REQUIRED_PAGE_TYPES.find(exists) ?? "home");
+  for (const t of REQUIRED_PAGE_TYPES) {
+    if (!exists(t)) continue;
+    const isDark = detectDarkMode(pages[t]);
+    if (userMode === "dark" && isDark) return t;
+    if (userMode === "light" && !isDark) return t;
+  }
+  return exists("home") ? "home" : (REQUIRED_PAGE_TYPES.find(exists) ?? "home");
+}
+
 async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
   const row = await prisma.wizardSession.findUnique({ where: { id: sessionId } });
   const tokens = snapshot.extractedTokens;
@@ -395,16 +418,21 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
       throw new Error(`Publicação bloqueada — ${parts.join("; ")}. Aprove as 5 páginas antes.`);
     }
 
-    // Cada página é publicada COMO O STITCH GEROU. Só passamos pelo sanitize
-    // BÁSICO (consertar HTML quebrado tipo <style> dentro de <script>, ordem
-    // de tags do head pro Tailwind CDN funcionar). NÃO substituímos header/
-    // footer/CSS — isso descaracteriza o trabalho do Stitch.
     let polished: Record<RequiredPageType, string> = { ...typed };
     for (const t of REQUIRED_PAGE_TYPES) {
       const html = polished[t];
       if (!html) continue;
       polished[t] = sanitizeStitchHtml(html);
     }
+
+    // Padroniza tema (tailwind config + fontes + <style>) entre as 5 páginas
+    // do MESMO site. Sem isso, Stitch costuma gerar home light e secundárias
+    // dark (ou vice-versa), com tipografias diferentes. Escolhemos uma página
+    // de REFERÊNCIA que case com a preferência do cliente (userMode) — se ele
+    // pediu dark, pegamos a primeira página dark gerada; senão, a home.
+    const userMode = detectUserColorMode(snapshot.answers.colors);
+    const referenceKey = pickReferencePage(polished, userMode);
+    polished = standardizePageStyling(polished, referenceKey) as Record<RequiredPageType, string>;
 
     await publishStitchPages(polished);
   } else if (row?.stitchHtmlCached?.trim()) {

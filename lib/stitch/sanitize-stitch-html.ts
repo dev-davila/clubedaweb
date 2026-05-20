@@ -27,9 +27,18 @@ export function sanitizeStitchHtml(
   let doc = html.trim();
   if (!doc) return doc;
 
+  // Bug 1 do Stitch: `</script>` no fim de um <style> inline.
   doc = doc.replace(
     /(<style[^>]*>[\s\S]*?)<\/script>(\s*<\/head>)/i,
     "$1</style>$2",
+  );
+
+  // Bug 2 do Stitch: `</style>` no fim do <script id="tailwind-config"> em vez
+  // de `</script>`. Faz o body inteiro virar conteúdo do <script>, deixando a
+  // página visualmente vazia.
+  doc = doc.replace(
+    /(<script[^>]*id=["']tailwind-config["'][^>]*>[\s\S]*?)<\/style>(\s*<\/head>)/i,
+    "$1</script>$2",
   );
 
   const match = doc.match(/^[\s\S]*?<\/html>/i);

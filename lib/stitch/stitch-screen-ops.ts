@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 import type { RequiredPageType } from "@/lib/themes/required-pages";
+import { detectUserColorMode } from "@/lib/wizard/design-themes";
 import type { ExtractedTokens, WizardAnswers } from "@/lib/wizard/types";
 import {
   fetchHtml,
@@ -113,8 +114,14 @@ export async function generateScreenVariants(
   });
 }
 
-function tokensToDesignTheme(tokens: ExtractedTokens): Record<string, unknown> {
-  const isDark = tokens.colorMode === "dark";
+function tokensToDesignTheme(
+  tokens: ExtractedTokens,
+  userMode?: "dark" | "light" | null,
+): Record<string, unknown> {
+  // userMode (do answers.colors) tem prioridade sobre o que o extractor detectou
+  // no HTML — caso o Stitch tenha desobedecido o pedido na primeira geração.
+  const effectiveMode = userMode ?? tokens.colorMode;
+  const isDark = effectiveMode === "dark";
   // Mapa de fonte → enum do Stitch SDK
   const fontHint = (tokens.fontHeading || "").toLowerCase();
   const headlineFont = fontHint.includes("playfair")
@@ -165,7 +172,7 @@ export async function ensureProjectDesignSystem(
     ]
       .filter(Boolean)
       .join(" "),
-    theme: tokensToDesignTheme(tokens),
+    theme: tokensToDesignTheme(tokens, detectUserColorMode(answers.colors)),
     designTokens: JSON.stringify({
       primary: tokens.primaryColor,
       secondary: tokens.secondaryColor,

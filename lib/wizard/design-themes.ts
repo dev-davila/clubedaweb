@@ -173,15 +173,35 @@ export function pickTheme(industry: string | null | undefined): SegmentTheme {
 }
 
 /**
+ * Detecta se o cliente pediu explicitamente modo dark ou light na resposta
+ * de `answers.colors`. Quando detecta, sobrepõe o default do segmento — o
+ * Marcio que pede "tema escuro estilo Spotify" não pode ver o site sair claro
+ * só porque o segmento dele é saúde.
+ */
+export function detectUserColorMode(colors: string | undefined): "dark" | "light" | null {
+  if (!colors) return null;
+  const c = colors.toLowerCase();
+  if (/\b(dark|escur|preto|black|noturn|night|cyberpunk|hacker|spotify|neon|noir)\b/.test(c)) return "dark";
+  if (/\b(light|claro|branco|white|clean|clinical|minimalist|airy|pastel)\b/.test(c)) return "light";
+  return null;
+}
+
+/**
  * Bloco de design system sugerido — vai para o prompt do Stitch quando o
  * cliente não definiu paleta/cores explícitas. Substitui a hint de 1 linha
  * por um direcionamento concreto.
+ *
+ * Quando `userOverride` é passado, sobrepõe o colorMode default do segmento.
  */
-export function themeBlock(theme: SegmentTheme): string {
-  const isDark = theme.colorMode === "dark";
+export function themeBlock(theme: SegmentTheme, userOverride?: "dark" | "light" | null): string {
+  const effectiveMode = userOverride ?? theme.colorMode;
+  const isDark = effectiveMode === "dark";
+  const overrideHeader = userOverride
+    ? `### MODO DE COR: **${isDark ? "DARK" : "LIGHT"}** ⚠️ EXIGÊNCIA EXPLÍCITA DO CLIENTE — NÃO IGNORE`
+    : `### MODO DE COR: **${isDark ? "DARK" : "LIGHT"}** (OBRIGATÓRIO — ignore preferência genérica)`;
   const modeLines = isDark
     ? [
-        `### MODO DE COR: **DARK** (esse é OBRIGATÓRIO — ignore preferência genérica)`,
+        overrideHeader,
         `- body background: **${theme.palette.darkBg}** (escuro)`,
         `- Hero deve ter fundo escuro (mesma cor do body) com texto claro`,
         `- Cards: variações sutis do escuro (slate-900, slate-800) com bordas sutis`,
@@ -190,7 +210,7 @@ export function themeBlock(theme: SegmentTheme): string {
         `- Accent colorido (${theme.palette.accent}) para CTAs e destaques`,
       ]
     : [
-        `### MODO DE COR: **LIGHT** (esse é o padrão do segmento)`,
+        overrideHeader,
         `- body background: **${theme.palette.lightBg}** (claro)`,
         `- Hero pode ter fundo claro com leve gradiente, OU bloco escuro contrastante de destaque`,
         `- Cards: brancos com sombra sutil`,

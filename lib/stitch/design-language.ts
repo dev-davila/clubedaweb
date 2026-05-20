@@ -1,5 +1,5 @@
 import type { WizardAnswers } from "@/lib/wizard/types";
-import { pickTheme, themeBlock } from "@/lib/wizard/design-themes";
+import { detectUserColorMode, pickTheme, themeBlock } from "@/lib/wizard/design-themes";
 
 const TONE_REFERENCES: Record<string, string> = {
   corporativo: "consultoria premium e confiável — não template SaaS azul genérico",
@@ -37,11 +37,11 @@ export function buildDesignLanguageBlock(answers: WizardAnswers): string {
   const company = answers.companyName?.trim() || "a empresa";
   const segment = answers.industry?.trim() || "serviços";
 
-  // Tema rico do segmento — só injetado quando o cliente não passou cores
-  // próprias (senão honra o briefing dele).
+  // Tema rico do segmento — sempre emitido pra garantir MODO DE COR no prompt.
+  // Quando o cliente pediu dark/light no `colors`, sobrepõe o default.
   const theme = pickTheme(answers.industry);
-  const hasClientPalette = (answers.colors?.trim().length ?? 0) >= 3;
-  const themeSection = hasClientPalette ? "" : themeBlock(theme);
+  const userMode = detectUserColorMode(answers.colors);
+  const themeSection = themeBlock(theme, userMode);
 
   return [
     `## Design language`,

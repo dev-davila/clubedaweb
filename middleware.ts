@@ -26,7 +26,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // Preparar resposta com security headers
-  const response = NextResponse.next();
+  const response = NextResponse.next({
+    request: {
+      headers: (() => {
+        const h = new Headers(request.headers);
+        h.set("x-pathname", pathname);
+        return h;
+      })(),
+    },
+  });
 
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');

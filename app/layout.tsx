@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
@@ -89,6 +90,10 @@ export default async function RootLayout({
   const layout = await getActiveLayout();
   // BD redesign uses floating navbar so main needs top padding; M3 has standard header
   const mainPad = layout === "bd" ? "pt-20" : "";
+  // /gestor (admin) e /preview têm seus próprios chrome — não renderiza o
+  // header/footer do site público nessas rotas.
+  const pathname = headers().get("x-pathname") ?? "";
+  const isChromedRoute = pathname.startsWith("/gestor") || pathname.startsWith("/preview");
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -106,13 +111,17 @@ export default async function RootLayout({
         <GoogleAnalytics />
         <AnalyticsTracker />
         <Providers>
-          <div className="flex flex-col min-h-screen">
-            <SiteHeader initialSiteConfig={siteConfig} />
-            <main className={`flex-1 ${mainPad}`}>{children}</main>
-            <SiteFooter initialSiteConfig={siteConfig} />
-          </div>
-          <WhatsAppButton />
-          <CookieConsent />
+          {isChromedRoute ? (
+            children
+          ) : (
+            <div className="flex flex-col min-h-screen">
+              <SiteHeader initialSiteConfig={siteConfig} />
+              <main className={`flex-1 ${mainPad}`}>{children}</main>
+              <SiteFooter initialSiteConfig={siteConfig} />
+            </div>
+          )}
+          {!isChromedRoute && <WhatsAppButton />}
+          {!isChromedRoute && <CookieConsent />}
         </Providers>
       </body>
     </html>

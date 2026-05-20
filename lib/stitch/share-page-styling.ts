@@ -12,17 +12,21 @@ export interface HomeStyling {
   tailwindConfig: string;
   /** <link rel="stylesheet" ...> de Google Fonts e similares */
   stylesheetLinks: string;
+  /** Atributo class do <body> da referência — garante bg/text consistente. */
+  bodyClass: string;
 }
 
 const STYLE_BLOCK_RE = /<style[\s\S]*?<\/style>/gi;
 const TAILWIND_CONFIG_RE = /<script[^>]*id=["']tailwind-config["'][\s\S]*?<\/script>/i;
 const STYLESHEET_LINK_RE = /<link[^>]*rel=["']stylesheet["'][^>]*>/gi;
+const BODY_CLASS_RE = /<body[^>]*\bclass=["']([^"']*)["']/i;
 
 export function extractHomeStyling(homeHtml: string): HomeStyling {
   const styleBlocks = (homeHtml.match(STYLE_BLOCK_RE) ?? []).join("\n");
   const tailwindConfig = homeHtml.match(TAILWIND_CONFIG_RE)?.[0] ?? "";
   const stylesheetLinks = (homeHtml.match(STYLESHEET_LINK_RE) ?? []).join("\n");
-  return { styleBlocks, tailwindConfig, stylesheetLinks };
+  const bodyClass = homeHtml.match(BODY_CLASS_RE)?.[1] ?? "";
+  return { styleBlocks, tailwindConfig, stylesheetLinks, bodyClass };
 }
 
 /**
@@ -60,6 +64,18 @@ export function applyHomeStyling(pageHtml: string, home: HomeStyling): string {
     out = out.replace(/<head([^>]*)>/i, `<head$1>\n${injection}\n`);
   } else if (/<html[^>]*>/i.test(out)) {
     out = out.replace(/<html([^>]*)>/i, `<html$1><head>${injection}</head>`);
+  }
+
+  // Sincroniza body class — garante bg-background / text-on-surface uniformes.
+  if (home.bodyClass) {
+    out = out.replace(
+      /<body([^>]*)\bclass=["'][^"']*["']([^>]*)>/i,
+      `<body$1class="${home.bodyClass}"$2>`,
+    );
+    // Se body não tinha class, injeta
+    if (!BODY_CLASS_RE.test(out)) {
+      out = out.replace(/<body([^>]*)>/i, `<body$1 class="${home.bodyClass}">`);
+    }
   }
 
   return out;

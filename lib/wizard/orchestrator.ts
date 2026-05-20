@@ -370,7 +370,13 @@ function pickReferencePage(
 ): RequiredPageType {
   const exists = (t: RequiredPageType) => !!pages[t]?.trim();
   if (!userMode) return exists("home") ? "home" : (REQUIRED_PAGE_TYPES.find(exists) ?? "home");
-  for (const t of REQUIRED_PAGE_TYPES) {
+  // Stitch costuma deixar a home com hero light mesmo quando o resto do site
+  // é dark. Quando o user pediu dark, prefere uma secundária antes da home;
+  // quando pediu light, a home costuma ser a melhor referência.
+  const order: RequiredPageType[] = userMode === "dark"
+    ? ["about", "services", "contact", "blog", "home"]
+    : ["home", "services", "about", "contact", "blog"];
+  for (const t of order) {
     if (!exists(t)) continue;
     const isDark = detectDarkMode(pages[t]);
     if (userMode === "dark" && isDark) return t;

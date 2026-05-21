@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
+import { injectClientLogo } from "@/lib/stitch/inject-logo";
 import { replaceFakeContacts } from "@/lib/stitch/replace-contacts";
 import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
@@ -389,30 +390,9 @@ function pickReferencePage(
 
 async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
   const row = await prisma.wizardSession.findUnique({ where: { id: sessionId } });
-  const tokens = snapshot.extractedTokens;
-  if (tokens) {
-    const existing = await prisma.brandTokens.findFirst({ where: { active: true } });
-    const data = {
-      primaryColor: tokens.primaryColor,
-      secondaryColor: tokens.secondaryColor,
-      accentColor: tokens.accentColor,
-      textColor: tokens.textColor,
-      textLightColor: tokens.textLightColor,
-      backgroundColor: tokens.backgroundColor,
-      surfaceColor: tokens.surfaceColor,
-      fontPrimary: tokens.fontPrimary,
-      fontHeading: tokens.fontHeading,
-      borderRadius: tokens.borderRadius,
-      styleType: tokens.styleType,
-      lastAnalyzed: new Date(),
-      analyzedFrom: "wizard-chat",
-    };
-    if (existing) {
-      await prisma.brandTokens.update({ where: { id: existing.id }, data });
-    } else {
-      await prisma.brandTokens.create({ data: { ...data, active: true } });
-    }
-  }
+  // NOTA: a tabela brandTokens é consumida pelo template legado (M3/BD) — o
+  // site Stitch tem CSS próprio dentro do iframe e não usa brandTokens. Não
+  // escrevemos lá pra evitar contaminar o tema do template padrão.
 
   const pagesCached = row?.stitchPagesCached as Record<string, string> | null;
   if (pagesCached && typeof pagesCached === "object") {
@@ -450,6 +430,35 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
     // Substitui contatos fake do Stitch pelos do briefing
     for (const t of REQUIRED_PAGE_TYPES) {
       if (polished[t]) polished[t] = replaceFakeContacts(polished[t], snapshot.answers);
+    }
+
+    // Logo do cliente — se houver siteConfig.logo_url cadastrado, injeta no
+    // header. Stitch coloca um ícone material genérico que descaracteriza a
+    // marca.
+    const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } });
+    const logoUrl = logoRow?.value?.trim() || null;
+    if (logoUrl) {
+      for (const t of REQUIRED_PAGE_TYPES) {
+        if (polished[t]) polished[t] = injectClientLogo(polished[t], logoUrl, snapshot.answers);
+      }
+    }
+
+    // Backup do publish anterior — permite rollback manual via SQL se algo
+    // der errado. Salvamos em chaves _prev (uma geração de histórico só).
+    try {
+      const prevRows = await prisma.siteConfig.findMany({
+        where: { key: { in: REQUIRED_PAGE_TYPES.map((t) => `stitch_html_${t}`) } },
+      });
+      for (const r of prevRows) {
+        if (!r.value?.trim()) continue;
+        await prisma.siteConfig.upsert({
+          where: { key: `${r.key}_prev` },
+          update: { value: r.value, category: "wizard" },
+          create: { key: `${r.key}_prev`, value: r.value, category: "wizard", label: `${r.label ?? r.key} (anterior)` },
+        });
+      }
+    } catch (err) {
+      logger.warn("[publish] backup anterior falhou: " + String(err));
     }
 
     await publishStitchPages(polished);

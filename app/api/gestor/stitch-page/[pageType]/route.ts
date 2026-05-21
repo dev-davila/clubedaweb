@@ -9,8 +9,20 @@ import {
   type RequiredPageType,
 } from "@/lib/themes/required-pages";
 import { stitchHtmlConfigKey } from "@/lib/stitch/published-pages";
+import {
+  extractChromeFromHome,
+  replaceChromeInHtml,
+} from "@/lib/stitch/standardize-chrome";
 
 export const dynamic = "force-dynamic";
+
+function safeExtractChrome(html: string) {
+  try {
+    return extractChromeFromHome(html);
+  } catch {
+    return null;
+  }
+}
 
 function parsePageType(raw: string): RequiredPageType | null {
   if (REQUIRED_PAGE_TYPES.includes(raw as RequiredPageType)) {
@@ -70,7 +82,52 @@ export async function PUT(request: NextRequest, { params }: Params) {
       },
     });
 
-    return NextResponse.json({ ok: true, bytes: body.html.length });
+    // Header e footer são globais — se mudaram nessa página, propaga
+    // automaticamente pras outras 4. Detecta por diff do chrome contra o
+    // backup imediatamente anterior.
+    let propagated: RequiredPageType[] = [];
+    try {
+      const newChrome = extractChromeFromHome(body.html);
+      const prevChrome = current?.value ? safeExtractChrome(current.value) : null;
+      const headerChanged = !prevChrome || newChrome.headerShell !== prevChrome.headerShell;
+      const footerChanged = !prevChrome || newChrome.footer !== prevChrome.footer;
+      if (headerChanged || footerChanged) {
+        for (const target of REQUIRED_PAGE_TYPES) {
+          if (target === pageType) continue;
+          const targetRow = await prisma.siteConfig.findUnique({
+            where: { key: stitchHtmlConfigKey(target) },
+          });
+          if (!targetRow?.value?.trim()) continue;
+          // Backup antes de propagar
+          await prisma.siteConfig.upsert({
+            where: { key: `${stitchHtmlConfigKey(target)}_prev` },
+            update: { value: targetRow.value, category: "wizard" },
+            create: {
+              key: `${stitchHtmlConfigKey(target)}_prev`,
+              value: targetRow.value,
+              category: "wizard",
+              label: `${targetRow.label ?? target} (anterior)`,
+            },
+          });
+          const updated = replaceChromeInHtml(
+            targetRow.value,
+            newChrome.headerShell,
+            newChrome.footer,
+          );
+          if (updated !== targetRow.value) {
+            await prisma.siteConfig.update({
+              where: { key: targetRow.key },
+              data: { value: updated.slice(0, 180_000) },
+            });
+            propagated.push(target);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[stitch-page] propagação chrome falhou: " + String(err));
+    }
+
+    return NextResponse.json({ ok: true, bytes: body.html.length, propagated });
   } catch (err) {
     logger.error("[stitch-page] PUT", err instanceof Error ? err.stack : String(err));
     return NextResponse.json({ error: "internal_error" }, { status: 500 });

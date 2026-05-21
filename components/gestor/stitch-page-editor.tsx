@@ -97,7 +97,11 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Falha");
       setHtml(cleaned);
-      setStatus({ ok: true, msg: `Salvo · ${Math.round(data.bytes / 1024)} KB · publicado em ${publicRoute}` });
+      const propagated = (data.propagated ?? []) as string[];
+      const tail = propagated.length
+        ? ` · header/footer propagados em ${propagated.length} página(s): ${propagated.join(", ")}`
+        : "";
+      setStatus({ ok: true, msg: `Salvo · ${Math.round(data.bytes / 1024)} KB · publicado em ${publicRoute}${tail}` });
     } catch (err) {
       setStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro" });
     } finally {

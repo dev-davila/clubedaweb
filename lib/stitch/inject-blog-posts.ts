@@ -184,22 +184,22 @@ export function wrapPostInStitchChrome(
   const img = imageUrl(post);
   const content = post.content?.trim() || "";
 
-  // Conteúdo: hero do post + body
+  // Conteúdo: hero do post + body. pt-32 compensa o header fixed top-0 do Stitch.
   const article = `
-<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-section-gap">
+<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-32 md:pt-40 pb-24">
   <article class="prose prose-invert max-w-3xl mx-auto">
     ${post.category ? `<div class="text-label-md font-label-md text-primary uppercase tracking-wider mb-3">${escapeHtml(post.category)}</div>` : ""}
-    <h1 class="font-headline-xl text-headline-xl mb-6 text-on-surface">${escapeHtml(post.title)}</h1>
+    <h1 class="font-headline-xl text-headline-xl mb-6 text-on-surface" style="font-size:clamp(2rem,5vw,3.5rem);line-height:1.1;">${escapeHtml(post.title)}</h1>
     <div class="flex items-center gap-3 text-on-surface-variant text-body-md mb-8">
       <span>${escapeHtml(post.author ?? "")}</span>
       ${dateStr ? `<span>·</span><time>${escapeHtml(dateStr)}</time>` : ""}
     </div>
-    ${img !== DEFAULT_IMAGE ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(post.title)}" class="w-full rounded-2xl mb-10" />` : ""}
-    ${post.excerpt ? `<p class="text-body-lg text-on-surface-variant mb-8">${escapeHtml(post.excerpt)}</p>` : ""}
-    <div class="text-body-md text-on-surface space-y-4">
+    ${img !== DEFAULT_IMAGE ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(post.title)}" class="w-full rounded-2xl mb-10" style="aspect-ratio:16/9;object-fit:cover;" />` : ""}
+    ${post.excerpt ? `<p class="text-body-lg text-on-surface-variant mb-8" style="font-size:1.15rem;line-height:1.6;">${escapeHtml(post.excerpt)}</p>` : ""}
+    <div class="text-body-md text-on-surface" style="font-size:1.05rem;line-height:1.75;">
       ${content}
     </div>
-    <div class="mt-12 pt-8 border-t border-outline-variant/30">
+    <div class="mt-16 pt-8 border-t border-outline-variant/30">
       <a href="/noticias" class="text-primary hover:underline">← Voltar para todas as notícias</a>
     </div>
   </article>

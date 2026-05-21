@@ -29,14 +29,10 @@ export function StitchPageView({ html, banner, fullViewport = false }: StitchPag
           }}
         />
         <div
-          className="fixed inset-0 z-[100000] flex flex-col bg-white"
+          className="fixed inset-0 z-[100000] flex flex-col bg-zinc-950"
           data-stitch-page-root="true"
         >
-          {banner ? (
-            <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-900 text-center text-xs py-2 px-4 shrink-0">
-              {banner}
-            </div>
-          ) : null}
+          {banner ? <div className="shrink-0">{banner}</div> : null}
           <iframe
             title="Página gerada"
             srcDoc={srcDoc}
@@ -50,11 +46,7 @@ export function StitchPageView({ html, banner, fullViewport = false }: StitchPag
 
   return (
     <div className="w-full -mx-0" data-stitch-embed="true">
-      {banner ? (
-        <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-900 text-center text-xs py-2 px-4 mb-0">
-          {banner}
-        </div>
-      ) : null}
+      {banner ? <div className="mb-0">{banner}</div> : null}
       <iframe
         title="Página gerada"
         srcDoc={srcDoc}

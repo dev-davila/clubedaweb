@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
 import { polishStitchPages } from "@/lib/stitch/polish-stitch-pages";
+import { getStitchMenuItems, saveStitchMenuItems, defaultMenuItems } from "@/lib/stitch/menu-items";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -377,11 +378,11 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
     // Logo do cliente cadastrado em siteConfig.logo_url
     const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } });
     const logoUrl = logoRow?.value?.trim() || null;
+    const menuItems = await getStitchMenuItems();
 
     // Pipeline unificado de polish (sanitize → padroniza chrome/CSS → contatos
-    // → forms → logo). Mesmo pipeline roda no /preview pra que o cliente veja
-    // a mesma coisa que vai publicar.
-    const polishedMap = polishStitchPages(typed, { answers: snapshot.answers, logoUrl });
+    // → forms → logo → menu labels). Mesmo pipeline roda no /preview.
+    const polishedMap = polishStitchPages(typed, { answers: snapshot.answers, logoUrl, menuItems });
     let polished = polishedMap as Record<RequiredPageType, string>;
 
     // Backup do publish anterior — permite rollback manual via SQL se algo
@@ -403,6 +404,15 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
     }
 
     await publishStitchPages(polished);
+
+    // Seed do menu canônico — só se ainda não houver custom items, preserva
+    // edições do gestor entre publishes.
+    try {
+      const existing = await prisma.siteConfig.findUnique({ where: { key: "stitch_menu_items" } });
+      if (!existing) await saveStitchMenuItems(defaultMenuItems());
+    } catch (err) {
+      logger.warn("[publish] seed menu items falhou: " + String(err));
+    }
   } else if (row?.stitchHtmlCached?.trim()) {
     await publishStitchPages({ home: row.stitchHtmlCached });
   }

@@ -9,6 +9,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { findByPreviewToken } from "@/lib/wizard/repository";
+import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { polishStitchPage } from "@/lib/stitch/polish-stitch-pages";
 import { unpackSessionData } from "@/lib/wizard/session-data";
 import {
@@ -44,7 +45,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { answers } = unpackSessionData(session.data);
   const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
   const logoUrl = logoRow?.value?.trim() || null;
-  const html = polishStitchPage(pageType, pages, { answers, logoUrl });
+  const menuItems = await getStitchMenuItems();
+  const html = polishStitchPage(pageType, pages, { answers, logoUrl, menuItems });
   if (!html) {
     return new Response("HTML da página não disponível", { status: 404 });
   }

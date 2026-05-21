@@ -20,7 +20,9 @@ import {
 } from "@/lib/themes/required-pages";
 import type { WizardAnswers } from "@/lib/wizard/types";
 import { detectUserColorMode } from "@/lib/wizard/design-themes";
+import { applyMenuLabels } from "./apply-menu-labels";
 import { injectClientLogo } from "./inject-logo";
+import type { StitchMenuItem } from "./menu-items";
 import { normalizeStitchForms } from "./normalize-forms";
 import { replaceFakeContacts } from "./replace-contacts";
 import { sanitizeStitchHtml } from "./sanitize-stitch-html";
@@ -32,6 +34,8 @@ export interface PolishOptions {
   answers: WizardAnswers;
   /** URL do logo cadastrado em siteConfig.logo_url, se houver. */
   logoUrl?: string | null;
+  /** Itens do menu editáveis pelo gestor; sobrescreve labels do Stitch. */
+  menuItems?: StitchMenuItem[];
 }
 
 /** Escolhe a página de referência pra styling (cf. orchestrator). */
@@ -103,6 +107,13 @@ export function polishStitchPages(
   if (opts.logoUrl?.trim()) {
     for (const t of REQUIRED_PAGE_TYPES) {
       if (polished[t]) polished[t] = injectClientLogo(polished[t]!, opts.logoUrl, opts.answers);
+    }
+  }
+
+  // 7) labels do menu editados pelo gestor sobrescrevem o que veio do Stitch
+  if (opts.menuItems && opts.menuItems.length > 0) {
+    for (const t of REQUIRED_PAGE_TYPES) {
+      if (polished[t]) polished[t] = applyMenuLabels(polished[t]!, opts.menuItems);
     }
   }
 

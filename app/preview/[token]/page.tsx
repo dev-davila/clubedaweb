@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
+import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { polishStitchPage } from "@/lib/stitch/polish-stitch-pages";
 import { REQUIRED_PAGE_TYPES } from "@/lib/themes/required-pages";
 import { findByPreviewToken } from "@/lib/wizard/repository";
@@ -54,7 +55,8 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   const { answers } = unpackSessionData(session.data);
   const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
   const logoUrl = logoRow?.value?.trim() || null;
-  const html = polishStitchPage(pageType, pages, { answers, logoUrl });
+  const menuItems = await getStitchMenuItems();
+  const html = polishStitchPage(pageType, pages, { answers, logoUrl, menuItems });
   if (!html) notFound();
 
   const companyName = answers.companyName?.trim() || "Sua marca";

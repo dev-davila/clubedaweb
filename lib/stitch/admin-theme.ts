@@ -12,14 +12,33 @@ export interface AdminThemeStyles {
   css: string;
   /** Indica se há tema Stitch (false = fallback do M3 base). */
   hasStitchTheme: boolean;
+  /** URL do Google Fonts pra carregar a tipografia (heading e body). */
+  fontUrl?: string;
 }
 
 function pickFont(fontStack: string): string {
-  // "Inter, system-ui, sans-serif" → "Inter"
-  return fontStack
-    .split(",")[0]
-    .replace(/['"]/g, "")
-    .trim();
+  // "Inter, system-ui, sans-serif" → "Inter". Ignora Material Symbols, que
+  // é fonte de ícone (não tipografia de texto).
+  for (const raw of fontStack.split(",")) {
+    const name = raw.replace(/['"]/g, "").trim();
+    if (!name) continue;
+    if (/material[\s-]?symbols?/i.test(name)) continue;
+    if (/system-ui|sans-serif|serif|monospace/i.test(name)) continue;
+    return name;
+  }
+  return "Inter";
+}
+
+/** Extrai a primeira fonte de texto não-ícone dos <link href="fonts.googleapis.com/css2?family=..."> */
+function detectTextFont(html: string): string | null {
+  const re = /fonts\.googleapis\.com\/css2\?family=([^&"'\s]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) {
+    const name = decodeURIComponent(m[1].replace(/\+/g, " ")).split(":")[0];
+    if (/material[\s-]?symbols?/i.test(name)) continue;
+    return name;
+  }
+  return null;
 }
 
 export async function getAdminThemeStyles(): Promise<AdminThemeStyles> {
@@ -31,8 +50,9 @@ export async function getAdminThemeStyles(): Promise<AdminThemeStyles> {
   const tokens = extractTokensFromHtml(html);
   const primary = tokens.primaryColor || "#10b981";
   const accent = tokens.accentColor || primary;
-  const heading = pickFont(tokens.fontHeading || "Inter");
-  const body = pickFont(tokens.fontPrimary || "Inter");
+  const detectedFont = detectTextFont(html);
+  const heading = detectedFont ?? pickFont(tokens.fontHeading || "Inter");
+  const body = detectedFont ?? pickFont(tokens.fontPrimary || "Inter");
   const isDark = tokens.colorMode === "dark";
 
   // O admin tem fundo branco — aplicamos a cor primária do site nos elementos
@@ -96,5 +116,14 @@ nav a.bg-emerald-50 svg, nav a.bg-green-50 svg { color: var(--stitch-primary) !i
 }
 `;
 
-  return { css, hasStitchTheme: true };
+  // URL do Google Fonts pra carregar as 2 famílias (heading + body)
+  const families = new Set([heading, body]);
+  const familyParams = [...families]
+    .filter((f) => !/system-ui/i.test(f))
+    .map((f) => `family=${f.replace(/\s+/g, "+")}:wght@400;500;600;700`);
+  const fontUrl = familyParams.length
+    ? `https://fonts.googleapis.com/css2?${familyParams.join("&")}&display=swap`
+    : undefined;
+
+  return { css, hasStitchTheme: true, fontUrl };
 }

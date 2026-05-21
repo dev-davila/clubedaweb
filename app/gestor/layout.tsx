@@ -13,7 +13,7 @@ export default async function GestorLayout({
 }) {
   const session = await getServerSession(authOptions);
   const siteConfig = await getSiteConfigServer();
-  const { css: themeCss, hasStitchTheme } = await getAdminThemeStyles();
+  const { css: themeCss, hasStitchTheme, fontUrl } = await getAdminThemeStyles();
 
   return (
     <>
@@ -21,6 +21,7 @@ export default async function GestorLayout({
         <>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          {fontUrl && <link rel="stylesheet" href={fontUrl} />}
           <style dangerouslySetInnerHTML={{ __html: themeCss }} />
         </>
       )}

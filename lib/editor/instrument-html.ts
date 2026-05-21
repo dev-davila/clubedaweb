@@ -20,21 +20,24 @@ const EDITOR_SCRIPT = `
 </style>
 <script id="__cdw_editor_runtime">
 (function() {
-  var EDITABLE_TAGS = ["H1","H2","H3","H4","H5","H6","P","SPAN","STRONG","EM","LI","A","BUTTON","BLOCKQUOTE","LABEL"];
+  // Tags de bloco — instrumentamos o pai (não filhos inline)
+  var BLOCK_TAGS = ["H1","H2","H3","H4","H5","H6","P","LI","A","BUTTON","BLOCKQUOTE","LABEL"];
+  // Tags inline — filhos comuns de bloco (span destaque, strong, etc.) que
+  // NÃO devem ser instrumentados separadamente
+  var INLINE_TAGS = ["SPAN","STRONG","EM","B","I","MARK","CODE"];
   var IMG_TAG = "IMG";
 
   function shouldInstrument(el) {
     if (!el || !el.tagName) return false;
     if (el.closest("[data-no-edit]")) return false;
     if (el.tagName === IMG_TAG) return true;
-    if (!EDITABLE_TAGS.includes(el.tagName)) return false;
-    // Não instrumenta wrappers vazios
+    if (!BLOCK_TAGS.includes(el.tagName)) return false;
     if (!el.textContent || !el.textContent.trim()) return false;
-    // Não duplica em elementos aninhados (deixa o filho mais interno texto)
-    var hasEditableChild = Array.from(el.children).some(function(c) {
-      return EDITABLE_TAGS.includes(c.tagName) && c.textContent && c.textContent.trim();
+    // Block dentro de block — instrumenta só o mais externo
+    var hasBlockChild = Array.from(el.children).some(function(c) {
+      return BLOCK_TAGS.includes(c.tagName) && c.textContent && c.textContent.trim();
     });
-    if (hasEditableChild) return false;
+    if (hasBlockChild) return false;
     return true;
   }
 

@@ -98,11 +98,47 @@ function cloneArticleTemplate(template: string, post: BlogPostLike): string {
   return card;
 }
 
+/**
+ * Substitui o conteúdo do <section data-block="hero">…</section> da blog
+ * pelo post em destaque (primeiro post, mais recente). Mantém estrutura
+ * de classes do Stitch.
+ */
+function replaceHeroWithPost(html: string, post: BlogPostLike): string {
+  return html.replace(
+    /<section\b[^>]*\bdata-block=["']hero["'][^>]*>[\s\S]*?<\/section>/i,
+    (match) => {
+      // Preserva atributos do <section>
+      const openTag = match.match(/<section\b[^>]*>/i)?.[0] ?? "<section data-block='hero'>";
+      // Encontra o primeiro h1 ou h2 dentro pra preservar suas classes
+      const innerH = match.match(/<h[12]\b[^>]*>/i)?.[0] ?? '<h1 class="font-headline-xl text-headline-xl text-on-surface">';
+      const closeH = innerH.startsWith("<h1") ? "</h1>" : "</h2>";
+      const innerP = match.match(/<p\b[^>]*>/i)?.[0] ?? '<p class="text-body-lg text-on-surface-variant">';
+      const innerSpan = match.match(/<span\b[^>]*>/i)?.[0] ?? "";
+
+      const categoryHtml = post.category && innerSpan
+        ? `${innerSpan}${escapeHtml(post.category)}</span>`
+        : "";
+
+      return `${openTag}
+        <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-section-gap text-center md:text-left">
+          ${categoryHtml}
+          <a href="/noticias/${escapeAttr(post.slug)}" class="block group">
+            ${innerH}${escapeHtml(post.title)}${closeH}
+            ${post.excerpt ? `${innerP}${escapeHtml(post.excerpt)}</p>` : ""}
+          </a>
+        </div>
+      </section>`;
+    },
+  );
+}
+
 export function injectBlogPostsList(
   html: string,
   posts: BlogPostLike[],
 ): string {
   if (posts.length === 0) return html;
+  // Hero com post mais recente (primeiro do array)
+  html = replaceHeroWithPost(html, posts[0]);
   // Encontra todos os <article>...</article>
   const articleRe = /<article\b[\s\S]*?<\/article>/gi;
   const matches: { match: string; index: number }[] = [];

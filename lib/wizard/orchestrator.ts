@@ -4,6 +4,7 @@ import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
 import { polishStitchPages } from "@/lib/stitch/polish-stitch-pages";
 import { getStitchMenuItems, saveStitchMenuItems, defaultMenuItems } from "@/lib/stitch/menu-items";
+import { extractBlogArticles } from "@/lib/stitch/extract-blog-articles";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -412,6 +413,43 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
       if (!existing) await saveStitchMenuItems(defaultMenuItems());
     } catch (err) {
       logger.warn("[publish] seed menu items falhou: " + String(err));
+    }
+
+    // Cadastra os artigos da blog como BlogPost no banco — o site fica
+    // dinâmico (/gestor/posts edita, /noticias reflete). Só seeda quando
+    // ainda não há posts (preserva edições posteriores).
+    try {
+      const blogHtml = polished.blog;
+      if (blogHtml) {
+        const count = await prisma.blogPost.count({ where: { deletedAt: null } });
+        if (count === 0) {
+          const articles = extractBlogArticles(blogHtml);
+          for (const a of articles) {
+            if (!a.title || !a.slug) continue;
+            try {
+              await prisma.blogPost.create({
+                data: {
+                  title: a.title,
+                  slug: a.slug,
+                  excerpt: a.excerpt || null,
+                  content: `<p>${a.excerpt || a.title}</p>\n<p><em>Conteúdo gerado pelo wizard — edite pelo /gestor/posts.</em></p>`,
+                  contentHtml: null,
+                  featuredImage: a.featuredImage || null,
+                  status: "PUBLISHED",
+                  publishedAt: new Date(),
+                  aiGenerated: true,
+                  aiModel: "stitch",
+                },
+              });
+            } catch (e) {
+              logger.warn(`[publish] seed BlogPost "${a.title}" falhou: ${String(e)}`);
+            }
+          }
+          logger.info(`[publish] seeded ${articles.length} BlogPost(s) do Stitch`);
+        }
+      }
+    } catch (err) {
+      logger.warn("[publish] seed BlogPost falhou: " + String(err));
     }
   } else if (row?.stitchHtmlCached?.trim()) {
     await publishStitchPages({ home: row.stitchHtmlCached });

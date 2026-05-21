@@ -27,14 +27,30 @@ export function replaceFakeContacts(html: string, answers: WizardAnswers): strin
     }
   }
 
-  // Email
+  // Email — substitui só emails com domínio claramente "inventado" pelo
+  // Stitch (que casa com a empresa: vitalissaude.com.br, contato.NOMEEMPRESA…).
+  // NÃO substitui emails que sejam claramente reais e diferentes (ex: provedor
+  // grande tipo @gmail.com, @outlook.com, ou domínio do próprio user).
   const email = answers.contactEmail?.trim();
   if (email) {
+    const realDomain = email.split("@")[1]?.toLowerCase() ?? "";
     out = out.replace(/href=(["'])mailto:[^"']*\1/gi, `href=$1mailto:${email}$1`);
-    // Substitui qualquer email no texto que não case com o real
+    // Detecta domínios inventados pelo Stitch — gera versão "slug" do nome da
+    // empresa pra comparar.
+    const company = answers.companyName?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
     out = out.replace(
-      /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi,
-      (match) => (match.toLowerCase() === email.toLowerCase() ? match : email),
+      /\b[a-z0-9._%+-]+@([a-z0-9.-]+\.[a-z]{2,})\b/gi,
+      (match, domain: string) => {
+        const d = domain.toLowerCase();
+        // Mantém emails reais (provedor grande, domínio do próprio user, mesmo email)
+        if (d === realDomain) return match;
+        if (/(gmail|outlook|hotmail|yahoo|icloud|protonmail|live|uol|terra|bol|globo|ig)\./i.test(d)) return match;
+        // Substitui só se o domínio claramente inventou o nome da empresa
+        const dCore = d.replace(/\.(com|com\.br|net|net\.br|org|org\.br|io|app|tech|saude)$/i, "").replace(/[^a-z0-9]/g, "");
+        if (company && (dCore.includes(company.slice(0, 6)) || company.includes(dCore))) return email;
+        // Domínio desconhecido — preserva
+        return match;
+      },
     );
   }
 

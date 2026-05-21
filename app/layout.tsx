@@ -10,6 +10,7 @@ import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { ThemeInjector } from "@/components/theme-injector";
 import { getSiteConfigServer } from "@/lib/site-config-server";
 import { getActiveLayout } from "@/lib/active-layout";
+import { isStitchSitePublished } from "@/lib/stitch/published-pages";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -91,9 +92,15 @@ export default async function RootLayout({
   // BD redesign uses floating navbar so main needs top padding; M3 has standard header
   const mainPad = layout === "bd" ? "pt-20" : "";
   // /gestor (admin) e /preview têm seus próprios chrome — não renderiza o
-  // header/footer do site público nessas rotas.
+  // header/footer do site público nessas rotas. Idem em todo o site público
+  // quando o publish é Stitch (o site vive dentro de um iframe e tem seu
+  // próprio header/footer/cookie-bar implícito).
   const pathname = headers().get("x-pathname") ?? "";
-  const isChromedRoute = pathname.startsWith("/gestor") || pathname.startsWith("/preview");
+  const stitchPublished = await isStitchSitePublished();
+  const isChromedRoute =
+    pathname.startsWith("/gestor") ||
+    pathname.startsWith("/preview") ||
+    stitchPublished;
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>

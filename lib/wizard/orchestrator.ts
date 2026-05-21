@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
 import { injectClientLogo } from "@/lib/stitch/inject-logo";
+import { normalizeStitchForms } from "@/lib/stitch/normalize-forms";
 import { replaceFakeContacts } from "@/lib/stitch/replace-contacts";
 import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
@@ -430,6 +431,11 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
     // Substitui contatos fake do Stitch pelos do briefing
     for (const t of REQUIRED_PAGE_TYPES) {
       if (polished[t]) polished[t] = replaceFakeContacts(polished[t], snapshot.answers);
+    }
+
+    // Reescreve <form> do Stitch (action=# inútil) pra POST /api/contact
+    for (const t of REQUIRED_PAGE_TYPES) {
+      if (polished[t]) polished[t] = normalizeStitchForms(polished[t]);
     }
 
     // Logo do cliente — se houver siteConfig.logo_url cadastrado, injeta no

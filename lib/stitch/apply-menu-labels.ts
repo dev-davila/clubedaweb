@@ -14,28 +14,37 @@ import type { StitchMenuItem } from "./menu-items";
 
 export function applyMenuLabels(html: string, items: StitchMenuItem[]): string {
   return html.replace(/<header\b[\s\S]*?<\/header>/i, (header) => {
-    let out = header;
-    for (const item of items) {
-      // Remove o <a> inteiro quando invisível
-      if (!item.visible) {
-        const removeRe = new RegExp(
-          `<a\\b[^>]*\\bhref=["']${escapeRoute(item.route)}["'][^>]*>[\\s\\S]*?<\\/a>`,
-          "gi",
-        );
-        out = out.replace(removeRe, "");
-        continue;
-      }
-      // Reescreve o texto interno do <a>
-      const re = new RegExp(
-        `(<a\\b[^>]*\\bhref=["']${escapeRoute(item.route)}["'][^>]*>)([\\s\\S]*?)(<\\/a>)`,
+    // Só toca em <a> que estão DENTRO de <nav> (links de navegação reais).
+    // O brand/logo do header costuma ser um <a> direto pra "/" ou "/contato"
+    // que NÃO está dentro de <nav> — não pode ser sobrescrito.
+    return header.replace(/<nav\b[\s\S]*?<\/nav>/gi, (nav) => rewriteNavLinks(nav, items));
+  });
+}
+
+function rewriteNavLinks(navHtml: string, items: StitchMenuItem[]): string {
+  let out = navHtml;
+  for (const item of items) {
+    // Remove o <a> inteiro quando invisível
+    if (!item.visible) {
+      const removeRe = new RegExp(
+        `<a\\b[^>]*\\bhref=["']${escapeRoute(item.route)}["'][^>]*>[\\s\\S]*?<\\/a>`,
         "gi",
       );
-      out = out.replace(re, (_m, open: string, _inner: string, close: string) => {
-        return `${open}${escapeHtml(item.label)}${close}`;
-      });
+      out = out.replace(removeRe, "");
+      continue;
     }
-    return out;
-  });
+    // Reescreve só o texto interno do <a> de navegação. Se contém <img>/<svg>
+    // (provável brand-like), pula pra não destruir.
+    const re = new RegExp(
+      `(<a\\b[^>]*\\bhref=["']${escapeRoute(item.route)}["'][^>]*>)([\\s\\S]*?)(<\\/a>)`,
+      "gi",
+    );
+    out = out.replace(re, (full: string, open: string, inner: string, close: string) => {
+      if (/<img|<svg/i.test(inner)) return full;
+      return `${open}${escapeHtml(item.label)}${close}`;
+    });
+  }
+  return out;
 }
 
 function escapeRoute(s: string): string {

@@ -6,6 +6,7 @@ import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
 import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
 import { injectBlogPostsList } from "@/lib/stitch/inject-blog-posts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
 
@@ -44,7 +45,8 @@ export default async function NoticiasPage({
   const stitchHtml = await getPublishedStitchHtml("blog");
   if (stitchHtml) {
     const menuItems = await getStitchMenuItems();
-    const withMenu = applyMenuLabels(stitchHtml, menuItems);
+    const withLabels = applyMenuLabels(stitchHtml, menuItems);
+    const withMenu = applyActiveMenu(withLabels, "/noticias");
     const withPosts = injectBlogPostsList(
       withMenu,
       blogPosts.map((p) => ({

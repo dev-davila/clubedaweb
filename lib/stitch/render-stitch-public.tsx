@@ -1,5 +1,9 @@
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
-import type { RequiredPageType } from "@/lib/themes/required-pages";
+import {
+  SITE_PAGE_ROUTES,
+  type RequiredPageType,
+} from "@/lib/themes/required-pages";
+import { applyActiveMenu } from "./apply-active-menu";
 import { applyMenuLabels } from "./apply-menu-labels";
 import { getStitchMenuItems } from "./menu-items";
 import { getPublishedStitchHtml } from "./published-pages";
@@ -8,8 +12,10 @@ import { getPublishedStitchHtml } from "./published-pages";
 export async function tryRenderStitchPublicPage(pageType: RequiredPageType) {
   const html = await getPublishedStitchHtml(pageType);
   if (!html) return null;
-  // Aplica labels de menu editados pelo gestor (header).
+  // Aplica labels customizados pelo gestor + marca o item ativo no menu
+  // baseado na rota canônica da página atual.
   const menuItems = await getStitchMenuItems();
-  const finalHtml = applyMenuLabels(html, menuItems);
+  let finalHtml = applyMenuLabels(html, menuItems);
+  finalHtml = applyActiveMenu(finalHtml, SITE_PAGE_ROUTES[pageType]);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

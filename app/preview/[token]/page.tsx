@@ -4,8 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
+import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { polishStitchPage } from "@/lib/stitch/polish-stitch-pages";
+import { SITE_PAGE_ROUTES } from "@/lib/themes/required-pages";
 import { REQUIRED_PAGE_TYPES } from "@/lib/themes/required-pages";
 import { findByPreviewToken } from "@/lib/wizard/repository";
 import { previewUrlForPage } from "@/lib/wizard/prompts";
@@ -56,8 +58,9 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
   const logoUrl = logoRow?.value?.trim() || null;
   const menuItems = await getStitchMenuItems();
-  const html = polishStitchPage(pageType, pages, { answers, logoUrl, menuItems });
+  let html = polishStitchPage(pageType, pages, { answers, logoUrl, menuItems });
   if (!html) notFound();
+  html = applyActiveMenu(html, SITE_PAGE_ROUTES[pageType]);
 
   const companyName = answers.companyName?.trim() || "Sua marca";
   const origin = previewOriginFromHeaders();

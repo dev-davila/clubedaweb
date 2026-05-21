@@ -12,6 +12,7 @@ import { markdownToHtml } from "@/lib/markdown";
 import { ViewTracker } from "@/components/noticias/view-tracker";
 import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { wrapPostInStitchChrome } from "@/lib/stitch/inject-blog-posts";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
@@ -121,7 +122,8 @@ export default async function NoticiaPage({ params }: { params: Promise<{ slug: 
   const stitchHtml = await getPublishedStitchHtml("blog");
   if (stitchHtml) {
     const menuItems = await getStitchMenuItems();
-    const chromeHtml = applyMenuLabels(stitchHtml, menuItems);
+    const labelsHtml = applyMenuLabels(stitchHtml, menuItems);
+    const chromeHtml = applyActiveMenu(labelsHtml, "/noticias");
     const contentHtml = post.content?.startsWith("<")
       ? sanitizeHtml(post.content)
       : sanitizeHtml(await markdownToHtml(post.content ?? ""));

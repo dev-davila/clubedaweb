@@ -7,6 +7,7 @@
  */
 
 import { buildDesignLanguageBlock } from "@/lib/stitch/design-language";
+import { detectUserColorMode } from "@/lib/wizard/design-themes";
 import { copySummaryForPrompt } from "@/lib/stitch/copy-summary";
 import type { RequiredPageType } from "@/lib/themes/required-pages";
 import { REQUIRED_PAGE_TYPES, SITE_PAGE_ROUTES } from "@/lib/themes/required-pages";
@@ -621,9 +622,33 @@ export function buildStitchPagePrompt(
   // conteúdo literal do brief em cada bloco data-block.
   const richDirectives = richSectionDirectives(pageType, answers);
 
+  // Quando o cliente declarou explicitamente dark/light no answers.colors,
+  // o prompt PRECISA reforçar isso como instrução prioritária — Stitch ignora
+  // dicas dentro do design-block quando o segmento "puxa" pro outro lado
+  // (ex.: saúde→light por padrão), mesmo o cliente tendo pedido dark.
+  const userMode = detectUserColorMode(answers.colors);
+  const colorModeBlock = userMode
+    ? [
+        `## 🎨 MODO DE COR — EXIGÊNCIA EXPLÍCITA DO CLIENTE`,
+        `O cliente declarou no briefing: **${answers.colors}**`,
+        `Isso significa **MODO ${userMode === "dark" ? "DARK" : "LIGHT"}**.`,
+        userMode === "dark"
+          ? `- <html class="dark"> e <body class="bg-background"> com background ESCURO (#0F172A / #051424 / #18181b)
+- Texto principal CLARO (#F8FAFC / #E5E7EB)
+- Hero também escuro (NÃO pode ter hero light no meio do site dark)
+- NÃO use bg-white, bg-gray-50, bg-stone-50 — esses são light, mesmo se "harmoniza"
+- ALL pages (home, about, services, contact, blog) devem ter o MESMO modo dark`
+          : `- Background CLARO (#FFFFFF / #F9FAFB) em body e seções
+- Texto principal ESCURO (#0F172A / #1F2937)
+- Manter consistência clara em todas as páginas`,
+        `IGNORE preferências genéricas do segmento — o cliente foi explícito.`,
+      ].join("\n")
+    : "";
+
   const prompt = [
     `Gere UMA página HTML completa: **${label}** (${SITE_PAGE_ROUTES[pageType]}).`,
     `Estrutura e atributos data-block são OBRIGATÓRIOS. Site institucional completo — NÃO wireframe.`,
+    colorModeBlock,
     buildDesignLanguageBlock(answers),
     ``,
     richDirectives, // ← prioridade: instruções literais por seção com dados reais

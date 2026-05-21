@@ -16,6 +16,31 @@ export interface AdminThemeStyles {
   fontUrl?: string;
 }
 
+/** Hex `#RRGGBB` → "h s% l%" (formato esperado pelas vars `hsl(var(--primary))`). */
+function hexToHsl(hex: string): string {
+  const m = hex.replace("#", "").match(/^([0-9a-f]{6})$/i);
+  if (!m) return "186 100% 53%";
+  const r = parseInt(m[1].slice(0, 2), 16) / 255;
+  const g = parseInt(m[1].slice(2, 4), 16) / 255;
+  const b = parseInt(m[1].slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
 function pickFont(fontStack: string): string {
   // "Inter, system-ui, sans-serif" → "Inter". Ignora Material Symbols, que
   // é fonte de ícone (não tipografia de texto).
@@ -58,6 +83,9 @@ export async function getAdminThemeStyles(): Promise<AdminThemeStyles> {
   // O admin tem fundo branco — aplicamos a cor primária do site nos elementos
   // de ação (botões verdes, sidebar ativa, focus rings). Heading font aplicada
   // em títulos. Body font no resto.
+  const primaryHsl = hexToHsl(primary);
+  const accentHsl = hexToHsl(accent);
+
   const css = `
 :root {
   --stitch-primary: ${primary};
@@ -67,6 +95,13 @@ export async function getAdminThemeStyles(): Promise<AdminThemeStyles> {
   --stitch-font-heading: "${heading.replace(/"/g, "")}", "Inter", system-ui, sans-serif;
   --stitch-font-body: "${body.replace(/"/g, "")}", "Inter", system-ui, sans-serif;
   --stitch-color-mode: ${isDark ? "dark" : "light"};
+
+  /* Sobrescreve as vars HSL do template root (globals.css) — afeta bg-primary,
+     text-primary e text-link que usam hsl(var(--primary)). */
+  --primary: ${primaryHsl} !important;
+  --brand-primary: ${primaryHsl} !important;
+  --accent: ${accentHsl} !important;
+  --brand-accent: ${accentHsl} !important;
 }
 
 body { font-family: var(--stitch-font-body); }

@@ -138,7 +138,10 @@ const EDITOR_SCRIPT = `
   });
 
   function boot() {
-    var count = instrumentAll();
+    // Se o parent JÁ marcou os elementos (instrumentação sincrônica via DOM),
+    // só conta. Senão (fallback), faz a instrumentação no script.
+    var preMarked = document.querySelectorAll("[data-edit-id]").length;
+    var count = preMarked > 0 ? preMarked : instrumentAll();
     parent.postMessage({ type: "cdw-edit-ready", count: count }, "*");
   }
   if (document.readyState === "loading") {
@@ -150,18 +153,56 @@ const EDITOR_SCRIPT = `
 </script>
 `;
 
+const BLOCK_TAGS = new Set([
+  "H1", "H2", "H3", "H4", "H5", "H6", "P", "LI", "A", "BUTTON", "BLOCKQUOTE", "LABEL",
+]);
+
+/**
+ * Atribui `data-edit-id` no parent (mesma ordem de marcação que o script no
+ * iframe usaria). Necessário pra que o estado React no parent consiga aplicar
+ * patches por id em sincronia com o iframe.
+ *
+ * Só roda no browser (requer DOMParser/XMLSerializer).
+ */
+function addEditIds(html: string): string {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  let id = 0;
+  const all = doc.querySelectorAll("*");
+  all.forEach((el) => {
+    const tag = el.tagName.toUpperCase();
+    if (el.closest("[data-no-edit]")) return;
+    if (tag === "IMG") {
+      el.setAttribute("data-edit-id", String(id++));
+      return;
+    }
+    if (!BLOCK_TAGS.has(tag)) return;
+    const text = el.textContent ?? "";
+    if (!text.trim()) return;
+    // Pula se há filho block com texto
+    const hasBlockChild = Array.from(el.children).some((c) => {
+      const cTag = c.tagName.toUpperCase();
+      return BLOCK_TAGS.has(cTag) && (c.textContent ?? "").trim().length > 0;
+    });
+    if (hasBlockChild) return;
+    el.setAttribute("data-edit-id", String(id++));
+  });
+  const serialized = doc.documentElement.outerHTML;
+  return `<!DOCTYPE html>\n${serialized}`;
+}
+
 export function instrumentHtmlForEditor(html: string): string {
-  // Injeta antes do </head> — fallback antes do <body> se não tem </head>
-  if (/<\/head>/i.test(html)) {
-    return html.replace(/<\/head>/i, `${EDITOR_SCRIPT}\n</head>`);
+  const withIds = addEditIds(html);
+  if (/<\/head>/i.test(withIds)) {
+    return withIds.replace(/<\/head>/i, `${EDITOR_SCRIPT}\n</head>`);
   }
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head([^>]*)>/i, `<head$1>\n${EDITOR_SCRIPT}\n`);
+  if (/<head[^>]*>/i.test(withIds)) {
+    return withIds.replace(/<head([^>]*)>/i, `<head$1>\n${EDITOR_SCRIPT}\n`);
   }
-  if (/<body[^>]*>/i.test(html)) {
-    return html.replace(/<body([^>]*)>/i, `${EDITOR_SCRIPT}\n<body$1>`);
+  if (/<body[^>]*>/i.test(withIds)) {
+    return withIds.replace(/<body([^>]*)>/i, `${EDITOR_SCRIPT}\n<body$1>`);
   }
-  return EDITOR_SCRIPT + html;
+  return EDITOR_SCRIPT + withIds;
 }
 
 /**

@@ -134,9 +134,15 @@ const EDITOR_SCRIPT = `
     if (data.type === "cdw-edit-deselect") selectEl(null);
   });
 
-  // Anuncia pro parent que está pronto e quantos elementos instrumentados
-  var count = instrumentAll();
-  parent.postMessage({ type: "cdw-edit-ready", count: count }, "*");
+  function boot() {
+    var count = instrumentAll();
+    parent.postMessage({ type: "cdw-edit-ready", count: count }, "*");
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
 </script>
 `;

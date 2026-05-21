@@ -7,8 +7,10 @@
  *   /preview/<token>/raw?page=about → outra página
  */
 import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
 import { findByPreviewToken } from "@/lib/wizard/repository";
-import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
+import { polishStitchPage } from "@/lib/stitch/polish-stitch-pages";
+import { unpackSessionData } from "@/lib/wizard/session-data";
 import {
   parseSessionStitchPages,
   resolvePreviewPageType,
@@ -36,11 +38,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const pages = parseSessionStitchPages(session);
-  const raw = pages[pageType]?.trim();
-  if (!raw) {
+  if (!pages[pageType]?.trim()) {
     return new Response("HTML da página não disponível", { status: 404 });
   }
-  const html = sanitizeStitchHtml(raw);
+  const { answers } = unpackSessionData(session.data);
+  const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
+  const logoUrl = logoRow?.value?.trim() || null;
+  const html = polishStitchPage(pageType, pages, { answers, logoUrl });
+  if (!html) {
+    return new Response("HTML da página não disponível", { status: 404 });
+  }
 
   return new Response(html, {
     status: 200,

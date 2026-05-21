@@ -2,17 +2,11 @@ import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
-import { injectClientLogo } from "@/lib/stitch/inject-logo";
-import { normalizeStitchForms } from "@/lib/stitch/normalize-forms";
-import { replaceFakeContacts } from "@/lib/stitch/replace-contacts";
-import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
-import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
-import { standardizeSiteChrome } from "@/lib/stitch/standardize-chrome";
+import { polishStitchPages } from "@/lib/stitch/polish-stitch-pages";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
-import { detectDarkMode, fallbackTokens } from "@/lib/stitch/theme-extractor";
-import { detectUserColorMode } from "@/lib/wizard/design-themes";
+import { fallbackTokens } from "@/lib/stitch/theme-extractor";
 import {
   appendMessage,
   findOrCreateSession,
@@ -362,33 +356,6 @@ export async function restartSession(sessionId: string) {
   return ensureGreeting(sessionId);
 }
 
-/**
- * Escolhe a página cujo HTML tem o `colorMode` mais próximo do que o cliente
- * pediu. Se ele pediu dark, retorna a primeira página dark; se light, a
- * primeira light; sem preferência, retorna sempre "home" (mantém comportamento
- * anterior). Garante que a referência exista e tenha HTML.
- */
-function pickReferencePage(
-  pages: Record<RequiredPageType, string>,
-  userMode: "dark" | "light" | null,
-): RequiredPageType {
-  const exists = (t: RequiredPageType) => !!pages[t]?.trim();
-  if (!userMode) return exists("home") ? "home" : (REQUIRED_PAGE_TYPES.find(exists) ?? "home");
-  // Stitch costuma deixar a home com hero light mesmo quando o resto do site
-  // é dark. Quando o user pediu dark, prefere uma secundária antes da home;
-  // quando pediu light, a home costuma ser a melhor referência.
-  const order: RequiredPageType[] = userMode === "dark"
-    ? ["about", "services", "contact", "blog", "home"]
-    : ["home", "services", "about", "contact", "blog"];
-  for (const t of order) {
-    if (!exists(t)) continue;
-    const isDark = detectDarkMode(pages[t]);
-    if (userMode === "dark" && isDark) return t;
-    if (userMode === "light" && !isDark) return t;
-  }
-  return exists("home") ? "home" : (REQUIRED_PAGE_TYPES.find(exists) ?? "home");
-}
-
 async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
   const row = await prisma.wizardSession.findUnique({ where: { id: sessionId } });
   // NOTA: a tabela brandTokens é consumida pelo template legado (M3/BD) — o
@@ -407,47 +374,15 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
       throw new Error(`Publicação bloqueada — ${parts.join("; ")}. Aprove as 5 páginas antes.`);
     }
 
-    let polished: Record<RequiredPageType, string> = { ...typed };
-    for (const t of REQUIRED_PAGE_TYPES) {
-      const html = polished[t];
-      if (!html) continue;
-      polished[t] = sanitizeStitchHtml(html);
-    }
-
-    // Padroniza tema (tailwind config + fontes + <style> + body class) entre
-    // as 5 páginas do MESMO site, usando referência que case com o userMode.
-    const userMode = detectUserColorMode(snapshot.answers.colors);
-    const referenceKey = pickReferencePage(polished, userMode);
-    polished = standardizePageStyling(polished, referenceKey) as Record<RequiredPageType, string>;
-
-    // Header e footer iguais em todas as páginas (chrome único do site).
-    try {
-      polished = standardizeSiteChrome(polished, referenceKey);
-    } catch (err) {
-      // Sem header/footer detectável — segue sem padronizar
-      logger.warn("[publish] standardizeSiteChrome falhou: " + String(err));
-    }
-
-    // Substitui contatos fake do Stitch pelos do briefing
-    for (const t of REQUIRED_PAGE_TYPES) {
-      if (polished[t]) polished[t] = replaceFakeContacts(polished[t], snapshot.answers);
-    }
-
-    // Reescreve <form> do Stitch (action=# inútil) pra POST /api/contact
-    for (const t of REQUIRED_PAGE_TYPES) {
-      if (polished[t]) polished[t] = normalizeStitchForms(polished[t]);
-    }
-
-    // Logo do cliente — se houver siteConfig.logo_url cadastrado, injeta no
-    // header. Stitch coloca um ícone material genérico que descaracteriza a
-    // marca.
+    // Logo do cliente cadastrado em siteConfig.logo_url
     const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } });
     const logoUrl = logoRow?.value?.trim() || null;
-    if (logoUrl) {
-      for (const t of REQUIRED_PAGE_TYPES) {
-        if (polished[t]) polished[t] = injectClientLogo(polished[t], logoUrl, snapshot.answers);
-      }
-    }
+
+    // Pipeline unificado de polish (sanitize → padroniza chrome/CSS → contatos
+    // → forms → logo). Mesmo pipeline roda no /preview pra que o cliente veja
+    // a mesma coisa que vai publicar.
+    const polishedMap = polishStitchPages(typed, { answers: snapshot.answers, logoUrl });
+    let polished = polishedMap as Record<RequiredPageType, string>;
 
     // Backup do publish anterior — permite rollback manual via SQL se algo
     // der errado. Salvamos em chaves _prev (uma geração de histórico só).

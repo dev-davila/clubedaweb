@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
-import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
+import { polishStitchPage } from "@/lib/stitch/polish-stitch-pages";
 import { REQUIRED_PAGE_TYPES } from "@/lib/themes/required-pages";
 import { findByPreviewToken } from "@/lib/wizard/repository";
 import { previewUrlForPage } from "@/lib/wizard/prompts";
@@ -32,10 +33,10 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   if (!session) notFound();
   if (session.previewExpiresAt && session.previewExpiresAt < new Date()) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <main className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100 p-6">
         <div className="max-w-md text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Preview expirado</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold mb-2">Preview expirado</h1>
+          <p className="text-zinc-400">
             O link de preview tem validade limitada. Volta no assistente e gera um novo.
           </p>
         </div>
@@ -47,44 +48,75 @@ export default async function PreviewPage({ params, searchParams }: PageProps) {
   if (!pageType) notFound();
 
   const pages = parseSessionStitchPages(session);
-  const raw = pages[pageType]?.trim();
-  if (!raw) notFound();
-  const html = sanitizeStitchHtml(raw);
-  // Cada página é servida fiel ao que o Stitch gerou — sem propagar styling
-  // entre páginas. Cada uma tem seu próprio CSS, tailwind-config e fontes.
+  if (!pages[pageType]?.trim()) notFound();
 
+  // Mesmo pipeline do publish: o cliente vê EXATAMENTE o que vai ser publicado.
   const { answers } = unpackSessionData(session.data);
+  const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
+  const logoUrl = logoRow?.value?.trim() || null;
+  const html = polishStitchPage(pageType, pages, { answers, logoUrl });
+  if (!html) notFound();
+
   const companyName = answers.companyName?.trim() || "Sua marca";
   const origin = previewOriginFromHeaders();
-
-  const nav = (
-    <div className="bg-gray-900 text-gray-200 text-xs py-2 px-4 flex flex-wrap gap-3 justify-center shrink-0">
-      {REQUIRED_PAGE_TYPES.map((p) => (
-        <Link
-          key={p}
-          href={previewUrlForPage(origin, params.token, p)}
-          className={p === pageType ? "text-white font-semibold underline" : "hover:text-white"}
-        >
-          {PAGE_LABEL[p]}
-        </Link>
-      ))}
-    </div>
-  );
 
   return (
     <StitchPageView
       fullViewport
       html={html}
       banner={
-        <>
-          {nav}
-          <span>
-            <strong>Preview · {companyName}</strong> · {PAGE_LABEL[pageType]} · IA · expira em 24h ·{" "}
-            <strong>publicar</strong> no assistente para tornar permanente
-          </span>
-        </>
+        <PreviewBanner
+          companyName={companyName}
+          pageType={pageType}
+          token={params.token}
+          origin={origin}
+        />
       }
     />
+  );
+}
+
+interface BannerProps {
+  companyName: string;
+  pageType: string;
+  token: string;
+  origin: string;
+}
+
+function PreviewBanner({ companyName, pageType, token, origin }: BannerProps) {
+  const currentLabel = PAGE_LABEL[pageType] ?? pageType;
+  return (
+    <div className="bg-zinc-950 text-zinc-100 border-b border-zinc-800 px-5 py-2.5 flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-2.5 shrink-0">
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold uppercase tracking-wider border border-emerald-500/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Preview
+        </span>
+        <span className="font-semibold text-zinc-50 text-sm tracking-tight">{companyName}</span>
+        <span className="text-zinc-500 text-xs hidden sm:inline">·</span>
+        <span className="text-zinc-400 text-xs hidden sm:inline">{currentLabel}</span>
+      </div>
+
+      <nav className="flex items-center gap-1 ml-auto order-3 sm:order-2 w-full sm:w-auto">
+        {REQUIRED_PAGE_TYPES.map((p) => (
+          <Link
+            key={p}
+            href={previewUrlForPage(origin, token, p)}
+            className={
+              p === pageType
+                ? "px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-50 text-xs font-medium"
+                : "px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs transition"
+            }
+          >
+            {PAGE_LABEL[p]}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="text-zinc-500 text-[11px] order-2 sm:order-3 shrink-0">
+        expira em 24h · use <strong className="text-zinc-300">publicar</strong> no chat pra tornar permanente
+      </div>
+    </div>
   );
 }
 

@@ -126,10 +126,18 @@ export function transition({ snapshot, message, origin }: TransitionInput): Tran
         };
       }
 
+      // Qualquer texto livre que não seja aprovar/cancelar é tratado como
+      // ajuste textual — usuários escrevem "escureça o hero", "muda o título",
+      // "põe o telefone maior". Regenera com feedback.
+      const looksLikeAdjust =
+        !APPROVE_PAGE.test(trimmed) &&
+        !CANCEL_SESSION.test(trimmed) &&
+        trimmed.length >= 3;
       if (
         REGENERATE_PAGE.test(trimmed) ||
         VARIANT_PAGE.test(trimmed) ||
-        (NEGATIVE.test(trimmed) && !APPROVE_PAGE.test(trimmed))
+        (NEGATIVE.test(trimmed) && !APPROVE_PAGE.test(trimmed)) ||
+        looksLikeAdjust
       ) {
         const wantsVariant = VARIANT_PAGE.test(trimmed);
         const screenId = snapshot.stitchScreenIds?.[current];

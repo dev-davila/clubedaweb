@@ -33,7 +33,12 @@ const PAGE_DESC: Record<RequiredPageType, string> = {
   blog: "Artigos e novidades",
 };
 
-export async function StitchPagesGrid() {
+interface GridProps {
+  /** Se true, card vira link pro editor por página (em vez do site público). */
+  editable?: boolean;
+}
+
+export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
   const isPublished = await isStitchSitePublished();
   if (!isPublished) {
     return (
@@ -123,14 +128,24 @@ export async function StitchPagesGrid() {
                   )}
                 </div>
                 <div className="flex gap-1.5">
-                  <Link
-                    href={route}
-                    target="_blank"
-                    className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
-                  >
-                    <ExternalLink size={11} />
-                    Abrir
-                  </Link>
+                  {editable ? (
+                    <Link
+                      href={`/gestor/editor/${type}`}
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
+                    >
+                      <FileText size={11} />
+                      Editar
+                    </Link>
+                  ) : (
+                    <Link
+                      href={route}
+                      target="_blank"
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
+                    >
+                      <ExternalLink size={11} />
+                      Abrir
+                    </Link>
+                  )}
                   <Link
                     href={`/gestor/wizard/chat?regen=${type}`}
                     className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-50 transition"

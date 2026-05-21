@@ -122,6 +122,14 @@ export function replaceChromeInHtml(
     out = out.replace(/<\/body>/i, `${footer}\n</body>`);
   }
 
+  // Stitch costuma deixar um <nav> fixed top-0 ou comentário "data-block=header"
+  // logo após o </header> — segundo header duplicado. Remove esses lixos.
+  out = out.replace(/<!--\s*data-block=["']header["']\s*-->/gi, "");
+  out = out.replace(
+    /<nav\b[^>]*\b(fixed|sticky)\b[^>]*\btop-0\b[^>]*>[\s\S]*?<\/nav>/gi,
+    "",
+  );
+
   return out;
 }
 

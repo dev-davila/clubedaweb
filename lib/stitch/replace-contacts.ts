@@ -67,17 +67,37 @@ export function replaceFakeContacts(html: string, answers: WizardAnswers): strin
     );
   }
 
-  // Nome da empresa — substitui variações estranhas que Stitch inventa
+  // Nome da empresa — substitui variações estranhas que o Stitch inventa
+  // (ex.: "VITALITY" no lugar de "Vitalis Saúde Integrativa") em title, brand
+  // do header e qualquer span/h1/h2 que seja claramente a marca.
   const companyName = answers.companyName?.trim();
   if (companyName) {
-    // Substitui em <title> e em logo text quando houver discrepância de mais de
-    // 2 chars (ex.: "VITALITY" vs "Vitalis Saúde Integrativa")
+    // Gera variações comuns que Stitch encurta — primeira palavra ou nickname
+    const firstWord = companyName.split(/\s+/)[0];
+    const variants = new Set<string>();
+    if (firstWord.length >= 4) {
+      variants.add(firstWord.toUpperCase());
+      // Variações tipo "VITALITY" (sufixo Y ao 1º nome "VITAL")
+      if (firstWord.length >= 5) {
+        const stem = firstWord.slice(0, firstWord.length - 1);
+        variants.add(stem.toUpperCase() + "Y");
+        variants.add(stem.toUpperCase() + "ITY");
+      }
+    }
+    for (const v of variants) {
+      if (v === companyName.toUpperCase()) continue;
+      // Substitui só quando é a marca isolada (entre tags)
+      const re = new RegExp(`>\\s*${v}\\s*<`, "g");
+      out = out.replace(re, `>${escapeHtml(companyName)}<`);
+    }
     out = out.replace(
       /<title>([^<]*)<\/title>/i,
-      (match, inner) =>
-        inner.toLowerCase().includes(companyName.slice(0, 6).toLowerCase())
+      (match, inner) => {
+        const tail = inner.split("|").pop()?.trim() ?? "Home";
+        return inner.toLowerCase().includes(companyName.toLowerCase())
           ? match
-          : `<title>${escapeHtml(companyName)} | ${inner.split("|").pop()?.trim() ?? "Home"}</title>`,
+          : `<title>${escapeHtml(companyName)} | ${tail}</title>`;
+      },
     );
   }
 

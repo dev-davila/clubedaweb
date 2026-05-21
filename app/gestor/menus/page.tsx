@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { MenuBuilder } from "@/components/gestor/cms/menu-builder";
 import { StitchMenuEditor } from "@/components/gestor/stitch-menu-editor";
 import { StitchSiteSummary } from "@/components/gestor/stitch-site-summary";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
@@ -13,24 +12,19 @@ export default async function MenusPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Menus do site</h1>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Menu do site</h1>
         <p className="text-gray-600 text-sm mt-1">
-          As 5 páginas publicadas pelo Wizard formam o menu principal. Edite labels e visibilidade — as alterações aparecem em todo o site.
+          As 5 páginas publicadas pelo Wizard formam o menu principal. Edite labels e visibilidade — as alterações aparecem em todo o site imediatamente.
         </p>
       </div>
 
       <StitchSiteSummary context="menus" />
 
       {stitchPublished && (
-        <div className="mb-10">
+        <div className="mt-8">
           <StitchMenuEditor initialItems={stitchItems} />
         </div>
       )}
-
-      <div className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 mt-10">
-        Construtor de menu legado (não usado quando há site Stitch)
-      </div>
-      <MenuBuilder />
     </div>
   );
 }

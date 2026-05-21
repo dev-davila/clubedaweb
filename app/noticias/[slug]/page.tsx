@@ -10,6 +10,11 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { markdownToHtml } from "@/lib/markdown";
 import { ViewTracker } from "@/components/noticias/view-tracker";
+import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
+import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { getStitchMenuItems } from "@/lib/stitch/menu-items";
+import { wrapPostInStitchChrome } from "@/lib/stitch/inject-blog-posts";
+import { StitchPageView } from "@/components/stitch/stitch-page-view";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +114,35 @@ export default async function NoticiaPage({ params }: { params: Promise<{ slug: 
   if (!result) notFound();
 
   const { post } = result;
+
+  // Quando o site Stitch está publicado, wrap o post com o chrome do Stitch
+  // (header/footer/style) — mantém identidade visual do site nas páginas
+  // de detalhe.
+  const stitchHtml = await getPublishedStitchHtml("blog");
+  if (stitchHtml) {
+    const menuItems = await getStitchMenuItems();
+    const chromeHtml = applyMenuLabels(stitchHtml, menuItems);
+    const contentHtml = post.content?.startsWith("<")
+      ? sanitizeHtml(post.content)
+      : sanitizeHtml(await markdownToHtml(post.content ?? ""));
+    const wrapped = wrapPostInStitchChrome(chromeHtml, {
+      id: post.id,
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      featuredImage: (post as { featuredImage?: string | null }).featuredImage,
+      category: (post as { category?: { name?: string } | null }).category?.name ?? null,
+      author: (post as { author?: { name?: string } | null }).author?.name ?? null,
+      publishedAt: post.publishedAt ?? post.createdAt,
+      content: contentHtml,
+    });
+    return (
+      <>
+        <ViewTracker slug={slug} />
+        <StitchPageView html={wrapped} fullViewport />
+      </>
+    );
+  }
 
   // Default image for posts without featured image
   const DEFAULT_POST_IMAGE = "/images/blog-default.jpg";

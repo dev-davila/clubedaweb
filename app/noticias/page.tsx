@@ -3,6 +3,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PostsGrid } from "@/components/noticias/posts-grid";
 import { tryRenderStitchPublicPage } from "@/lib/stitch/render-stitch-public";
+import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
+import { injectBlogPostsList } from "@/lib/stitch/inject-blog-posts";
+import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { getStitchMenuItems } from "@/lib/stitch/menu-items";
+import { StitchPageView } from "@/components/stitch/stitch-page-view";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +21,6 @@ export default async function NoticiasPage({
 }: {
   searchParams: Promise<{ categoria?: string }>
 }) {
-  const stitch = await tryRenderStitchPublicPage("blog");
-  if (stitch) return stitch;
-
   const params = await searchParams;
   const categoryFilter = params.categoria;
 
@@ -34,6 +36,33 @@ export default async function NoticiasPage({
     orderBy: { publishedAt: "desc" },
     include: { category: true, author: true }
   });
+
+  // Quando há site Stitch publicado, mistura: usa o HTML estático como
+  // shell (header/footer/style) mas substitui os cards genéricos pelos
+  // posts REAIS do banco. Posts editados no /gestor/posts refletem
+  // imediatamente em /noticias.
+  const stitchHtml = await getPublishedStitchHtml("blog");
+  if (stitchHtml) {
+    const menuItems = await getStitchMenuItems();
+    const withMenu = applyMenuLabels(stitchHtml, menuItems);
+    const withPosts = injectBlogPostsList(
+      withMenu,
+      blogPosts.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        featuredImage: p.featuredImage,
+        category: p.category?.name ?? null,
+        author: p.author?.name ?? null,
+        publishedAt: p.publishedAt ?? p.createdAt,
+      })),
+    );
+    return <StitchPageView html={withPosts} fullViewport />;
+  }
+  // Fallback: usa template legado (Stitch não publicado ainda)
+  const stitch = await tryRenderStitchPublicPage("blog");
+  if (stitch) return stitch;
   
   const categories = await prisma.blogCategory.findMany({
     where: { active: true },

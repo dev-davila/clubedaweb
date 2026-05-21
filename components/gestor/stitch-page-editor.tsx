@@ -1,27 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   Save,
   Loader2,
   Code2,
-  Type as TypeIcon,
+  MousePointerClick,
   RotateCcw,
   ExternalLink,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Type as TypeIcon,
 } from "lucide-react";
-
-interface Field {
-  /** Texto exibido no input. */
-  label: string;
-  /** Regex que casa a string DENTRO do HTML (com captura do valor no grupo 1). */
-  pattern: RegExp;
-  /** Valor extraído inicialmente. */
-  value: string;
-  /** Helper humano (legível). */
-  hint?: string;
-}
+import { instrumentHtmlForEditor, deinstrumentHtml } from "@/lib/editor/instrument-html";
 
 interface Props {
   pageType: string;
@@ -30,119 +23,80 @@ interface Props {
   initialHtml: string;
 }
 
-function escapeReg(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** Extrai os campos mais editáveis do HTML do Stitch via regex conservadora. */
-function extractFields(html: string): Field[] {
-  const fields: Field[] = [];
-
-  const title = html.match(/<title>([^<]+)<\/title>/i)?.[1]?.trim();
-  if (title) {
-    fields.push({
-      label: "Título do navegador",
-      pattern: new RegExp(`(<title>)([^<]*)(<\\/title>)`, "i"),
-      value: title,
-      hint: "Mostrado na aba do navegador e no Google",
-    });
-  }
-
-  // H1 principal — primeiro <h1> de fato
-  const h1Match = html.match(/<h1\b[^>]*>([\s\S]{1,400}?)<\/h1>/i);
-  if (h1Match) {
-    fields.push({
-      label: "Headline (H1)",
-      pattern: new RegExp(`(<h1\\b[^>]*>)([\\s\\S]{0,800}?)(<\\/h1>)`, "i"),
-      value: stripTags(h1Match[1]),
-      hint: "O título principal da página",
-    });
-  }
-
-  // Primeiro parágrafo do hero
-  const heroPMatch = html.match(/<section\b[^>]*hero[\s\S]*?<p\b[^>]*>([\s\S]{1,500}?)<\/p>/i);
-  if (heroPMatch) {
-    const value = stripTags(heroPMatch[1]);
-    fields.push({
-      label: "Subtítulo do hero",
-      pattern: new RegExp(`(<section\\b[^>]*hero[\\s\\S]*?<p\\b[^>]*>)([\\s\\S]{0,800}?)(<\\/p>)`, "i"),
-      value,
-      hint: "Parágrafo abaixo do título principal",
-    });
-  }
-
-  return fields;
-}
-
-function stripTags(s: string): string {
-  return s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-}
-
-function applyFieldEdit(html: string, field: Field, newValue: string): string {
-  return html.replace(field.pattern, (_match, open: string, _inner: string, close: string) => {
-    return `${open}${newValue}${close}`;
-  });
+interface SelectedInfo {
+  editId: string;
+  tag: string;
+  isImage: boolean;
+  isLink: boolean;
+  isButton: boolean;
+  text: string;
+  href: string;
+  src: string;
+  alt: string;
 }
 
 export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml }: Props) {
   const [html, setHtml] = useState(initialHtml);
-  const [tab, setTab] = useState<"fields" | "html">("fields");
+  const [tab, setTab] = useState<"visual" | "html">("visual");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [selected, setSelected] = useState<SelectedInfo | null>(null);
+  const [instrumentedCount, setInstrumentedCount] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  const fields = useMemo(() => extractFields(html), [html]);
-  const [fieldValues, setFieldValues] = useState<string[]>(fields.map((f) => f.value));
-
-  // Sincroniza valores dos campos quando o HTML muda externamente
-  useEffect(() => {
-    setFieldValues(fields.map((f) => f.value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialHtml]);
-
-  const previewRef = useRef<HTMLIFrameElement | null>(null);
-
-  // Atualiza preview ao mudar o HTML (com debounce simples)
-  useEffect(() => {
-    const id = setTimeout(() => {
-      const iframe = previewRef.current;
-      if (!iframe) return;
-      iframe.srcdoc = html;
-    }, 400);
-    return () => clearTimeout(id);
-  }, [html]);
-
+  // Aplica instrumentação só pro iframe — o html salvo continua limpo
+  const instrumentedHtml = useMemo(() => instrumentHtmlForEditor(html), [html]);
   const dirty = html !== initialHtml;
 
-  const applyFieldEdits = () => {
-    let next = html;
-    fields.forEach((f, idx) => {
-      const newVal = fieldValues[idx];
-      if (newVal !== f.value) {
-        next = applyFieldEdit(next, f, newVal);
+  // Recebe eventos do iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "cdw-edit-ready") setInstrumentedCount(data.count ?? 0);
+      if (data.type === "cdw-edit-select") setSelected(data.info ?? null);
+      if (data.type === "cdw-edit-update") {
+        applyPatch(data.editId, data.kind, data.value);
       }
-    });
-    if (next !== html) setHtml(next);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Aplica um patch no HTML armazenado (que NÃO tem instrumentação). */
+  const applyPatch = useCallback((editId: string, kind: string, value: string) => {
+    setHtml((current) => patchHtml(current, editId, kind, value));
+  }, []);
+
+  /** Atualiza o iframe sem recarregar (postMessage). */
+  const pushPatchToIframe = (editId: string, kind: string, value: string) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "cdw-edit-patch", editId, kind, value },
+      "*",
+    );
+  };
+
+  const updateSelectedField = (kind: "text" | "href" | "src" | "alt", value: string) => {
+    if (!selected) return;
+    setSelected({ ...selected, [kind]: value });
+    pushPatchToIframe(selected.editId, kind, value);
+    applyPatch(selected.editId, kind, value);
   };
 
   const save = async () => {
     setBusy(true);
     setStatus(null);
     try {
-      // Aplica edits dos campos no HTML antes de salvar
-      let finalHtml = html;
-      fields.forEach((f, idx) => {
-        const newVal = fieldValues[idx];
-        if (newVal !== f.value) finalHtml = applyFieldEdit(finalHtml, f, newVal);
-      });
-
+      const cleaned = deinstrumentHtml(html);
       const res = await fetch(`/api/gestor/stitch-page/${pageType}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html: finalHtml }),
+        body: JSON.stringify({ html: cleaned }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Falha");
-      setHtml(finalHtml);
+      setHtml(cleaned);
       setStatus({ ok: true, msg: `Salvo · ${Math.round(data.bytes / 1024)} KB · publicado em ${publicRoute}` });
     } catch (err) {
       setStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro" });
@@ -153,7 +107,7 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
 
   const revert = () => {
     setHtml(initialHtml);
-    setFieldValues(fields.map((f) => f.value));
+    setSelected(null);
     setStatus(null);
   };
 
@@ -170,6 +124,11 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
         <div className="text-gray-300">·</div>
         <h1 className="font-semibold text-gray-900 text-sm">{pageLabel}</h1>
         <span className="text-xs text-gray-400 font-mono">{publicRoute}</span>
+        {instrumentedCount > 0 && tab === "visual" && (
+          <span className="hidden md:inline text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+            {instrumentedCount} elementos editáveis
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           <Link
@@ -210,16 +169,16 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
       )}
 
       <div className="flex-1 flex min-h-0">
-        <aside className="w-[380px] border-r border-gray-200 bg-gray-50/40 flex flex-col">
+        <aside className="w-[340px] border-r border-gray-200 bg-gray-50/40 flex flex-col">
           <div className="px-4 pt-3 pb-2 flex gap-1 border-b border-gray-200">
             <button
-              onClick={() => setTab("fields")}
+              onClick={() => setTab("visual")}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition ${
-                tab === "fields" ? "bg-white border border-gray-300 text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                tab === "visual" ? "bg-white border border-gray-300 text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
               }`}
             >
-              <TypeIcon size={12} />
-              Texto rápido
+              <MousePointerClick size={12} />
+              Visual
             </button>
             <button
               onClick={() => setTab("html")}
@@ -232,40 +191,26 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
             </button>
           </div>
 
-          {tab === "fields" ? (
-            <div className="overflow-y-auto flex-1 p-4 space-y-4">
-              {fields.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  Não consegui extrair campos editáveis dessa página. Use a aba HTML pra editar diretamente.
-                </p>
-              ) : (
-                <>
-                  {fields.map((f, idx) => (
-                    <div key={idx}>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        {f.label}
-                      </label>
-                      <textarea
-                        value={fieldValues[idx] ?? ""}
-                        onChange={(e) =>
-                          setFieldValues((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
-                        }
-                        rows={f.label.toLowerCase().includes("sub") ? 4 : 2}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                      />
-                      {f.hint && <p className="text-[11px] text-gray-500 mt-0.5">{f.hint}</p>}
-                    </div>
-                  ))}
-                  <button
-                    onClick={applyFieldEdits}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition"
-                  >
-                    Aplicar mudanças no preview
-                  </button>
-                  <p className="text-[11px] text-gray-500">
-                    O preview à direita atualiza com os campos editados. Use &quot;Salvar&quot; no topo pra publicar.
+          {tab === "visual" ? (
+            <div className="overflow-y-auto flex-1 p-4">
+              {!selected ? (
+                <div className="text-xs text-gray-500 space-y-2">
+                  <p className="font-semibold text-gray-700">Como editar</p>
+                  <ul className="list-disc list-inside space-y-1 pl-1">
+                    <li>Clique em qualquer texto pra editar</li>
+                    <li>Enter ou clique fora pra confirmar</li>
+                    <li>Clique numa imagem pra trocar a URL</li>
+                    <li>Clique em link/botão pra mudar texto e destino</li>
+                  </ul>
+                  <p className="text-[11px] text-gray-400 pt-2">
+                    Mudanças ficam só no preview até você clicar em <strong>Salvar</strong>.
                   </p>
-                </>
+                </div>
+              ) : (
+                <SelectedPanel
+                  info={selected}
+                  onUpdate={updateSelectedField}
+                />
               )}
             </div>
           ) : (
@@ -280,14 +225,125 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
 
         <main className="flex-1 bg-zinc-950 flex items-stretch">
           <iframe
-            ref={previewRef}
-            title="Preview ao vivo"
-            srcDoc={html}
-            sandbox="allow-scripts allow-same-origin"
+            ref={iframeRef}
+            title="Editor visual"
+            srcDoc={instrumentedHtml}
+            sandbox="allow-scripts allow-same-origin allow-forms"
             className="w-full h-full border-0 bg-white"
           />
         </main>
       </div>
     </div>
   );
+}
+
+interface PanelProps {
+  info: SelectedInfo;
+  onUpdate: (kind: "text" | "href" | "src" | "alt", value: string) => void;
+}
+
+function SelectedPanel({ info, onUpdate }: PanelProps) {
+  const TagIcon = info.isImage ? ImageIcon : info.isLink || info.isButton ? LinkIcon : TypeIcon;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <TagIcon size={14} className="text-emerald-600" />
+        <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+          {info.tag}
+        </span>
+        {info.isImage && <span className="text-[10px] text-gray-500">Imagem</span>}
+        {info.isLink && <span className="text-[10px] text-gray-500">Link</span>}
+        {info.isButton && <span className="text-[10px] text-gray-500">Botão</span>}
+      </div>
+
+      {info.isImage ? (
+        <>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">URL da imagem</label>
+            <input
+              type="url"
+              value={info.src}
+              onChange={(e) => onUpdate("src", e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+            {info.src && (
+              <img
+                src={info.src}
+                alt="preview"
+                className="mt-2 max-h-32 rounded-md border border-gray-200 object-contain"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Texto alternativo</label>
+            <input
+              type="text"
+              value={info.alt}
+              onChange={(e) => onUpdate("alt", e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              {info.isButton || info.isLink ? "Texto do botão" : "Conteúdo"}
+            </label>
+            <textarea
+              value={info.text}
+              onChange={(e) => onUpdate("text", e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              Você também pode clicar direto no texto no preview pra editar inline.
+            </p>
+          </div>
+          {(info.isLink || info.isButton) && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Destino (URL)</label>
+              <input
+                type="text"
+                value={info.href}
+                onChange={(e) => onUpdate("href", e.target.value)}
+                placeholder="/contato ou https://..."
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Aplica patch (text/href/src/alt) num HTML cru baseado em data-edit-id. */
+function patchHtml(html: string, editId: string, kind: string, value: string): string {
+  // Como o html armazenado NÃO tem data-edit-id, reconstruímos a mesma ordem
+  // de instrumentação no servidor… alternativa simples: instrumenta, patch, deinstrumenta.
+  const instrumented = instrumentHtmlForEditor(html);
+  const dom = parseDom(instrumented);
+  const target = dom.querySelector(`[data-edit-id="${escapeAttr(editId)}"]`);
+  if (!target) return html;
+  if (kind === "text") {
+    if (target.tagName === "IMG") target.setAttribute("alt", value);
+    else target.innerHTML = value;
+  } else if (kind === "href") target.setAttribute("href", value);
+  else if (kind === "src") target.setAttribute("src", value);
+  else if (kind === "alt") target.setAttribute("alt", value);
+  return deinstrumentHtml(serializeDom(dom));
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/"/g, "&quot;");
+}
+
+function parseDom(html: string): Document {
+  return new DOMParser().parseFromString(html, "text/html");
+}
+
+function serializeDom(doc: Document): string {
+  return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
 }

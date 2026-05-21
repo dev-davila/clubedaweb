@@ -65,9 +65,12 @@ export function extractBlogArticles(html: string): ExtractedArticle[] {
     const imgMatch = block.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i);
     const featuredImage = imgMatch ? decode(imgMatch[1]) : null;
 
-    // Categoria: heurística — span/badge curto com texto antes do título
-    const catMatch = block.match(/<span\b[^>]*>([^<\n]{2,40})<\/span>/i);
-    const category = catMatch ? decode(stripTags(catMatch[1])).slice(0, 40) : null;
+    // Categoria: pega o primeiro <span> com texto livre (skip material-symbols/icons)
+    const spans = [...block.matchAll(/<span\b[^>]*>([^<\n]{2,60})<\/span>/gi)];
+    const category = spans
+      .map((s) => decode(stripTags(s[1])).trim())
+      .find((s) => s && !/^(arrow_|material|chevron|menu|close|search|more)/i.test(s) && s.length <= 50)
+      ?? null;
 
     articles.push({
       title,

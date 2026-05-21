@@ -5,6 +5,16 @@ import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/publish
 import { polishStitchPages } from "@/lib/stitch/polish-stitch-pages";
 import { getStitchMenuItems, saveStitchMenuItems, defaultMenuItems } from "@/lib/stitch/menu-items";
 import { extractBlogArticles } from "@/lib/stitch/extract-blog-articles";
+
+function slugifyForRecord(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "sem-nome";
+}
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -417,13 +427,41 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
 
     // Cadastra os artigos da blog como BlogPost no banco — o site fica
     // dinâmico (/gestor/posts edita, /noticias reflete). Só seeda quando
-    // ainda não há posts (preserva edições posteriores).
+    // ainda não há posts (preserva edições posteriores). Também cria
+    // BlogCategory + BlogAuthor a partir dos articles do Stitch.
     try {
       const blogHtml = polished.blog;
       if (blogHtml) {
         const count = await prisma.blogPost.count({ where: { deletedAt: null } });
         if (count === 0) {
           const articles = extractBlogArticles(blogHtml);
+
+          // 1) Autor padrão = empresa
+          const companyName = snapshot.answers.companyName?.trim() || "Equipe Editorial";
+          const authorSlug = slugifyForRecord(companyName);
+          const author = await prisma.blogAuthor.upsert({
+            where: { slug: authorSlug },
+            update: { name: companyName, active: true },
+            create: { name: companyName, slug: authorSlug, active: true },
+          });
+
+          // 2) Categorias únicas extraídas dos articles
+          const uniqueCategories = Array.from(
+            new Set(articles.map((a) => a.category?.trim()).filter((c): c is string => Boolean(c))),
+          );
+          const categoryByName = new Map<string, string>();
+          let order = 0;
+          for (const catName of uniqueCategories) {
+            const catSlug = slugifyForRecord(catName);
+            const cat = await prisma.blogCategory.upsert({
+              where: { slug: catSlug },
+              update: { name: catName, active: true },
+              create: { name: catName, slug: catSlug, order: order++, active: true },
+            });
+            categoryByName.set(catName, cat.id);
+          }
+
+          // 3) Posts com vínculo de categoria + autor + tag mesma categoria
           for (const a of articles) {
             if (!a.title || !a.slug) continue;
             try {
@@ -439,13 +477,18 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
                   publishedAt: new Date(),
                   aiGenerated: true,
                   aiModel: "stitch",
+                  authorId: author.id,
+                  categoryId: a.category ? categoryByName.get(a.category) ?? null : null,
                 },
               });
             } catch (e) {
               logger.warn(`[publish] seed BlogPost "${a.title}" falhou: ${String(e)}`);
             }
           }
-          logger.info(`[publish] seeded ${articles.length} BlogPost(s) do Stitch`);
+
+          logger.info(
+            `[publish] seeded ${articles.length} BlogPost(s), ${uniqueCategories.length} BlogCategory, 1 BlogAuthor`,
+          );
         }
       }
     } catch (err) {

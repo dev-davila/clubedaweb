@@ -1,0 +1,93 @@
+import type { WizardAnswers } from "@/lib/wizard/types";
+
+/**
+ * Stitch inventa contatos plausíveis (telefones, emails, links wa.me) mesmo
+ * quando o briefing tem os reais. Esta função reescreve todos os pontos de
+ * contato fake do HTML pelos valores do briefing, mantendo o restante do
+ * conteúdo intacto.
+ */
+export function replaceFakeContacts(html: string, answers: WizardAnswers): string {
+  let out = html;
+
+  // Telefone — substitui qualquer tel:XXXX e exibições no texto
+  const phone = answers.contactPhone?.trim();
+  if (phone) {
+    const digits = phone.replace(/\D/g, "");
+    // tel:XXXX
+    out = out.replace(/href=(["'])tel:[^"']*\1/gi, `href=$1tel:${digits}$1`);
+    // Texto exibido entre tags — só substitui se Stitch usou número diferente
+    // ex.: `>11 9999-9999<` ou `>(11) 99999-9999<` — preserva números legítimos
+    // que casam com o telefone real.
+    if (digits.length >= 8) {
+      const display = phone;
+      out = out.replace(
+        />\s*\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}\s*</g,
+        (match) => (match.includes(digits.slice(0, 4)) ? match : `>${display}<`),
+      );
+    }
+  }
+
+  // Email
+  const email = answers.contactEmail?.trim();
+  if (email) {
+    out = out.replace(/href=(["'])mailto:[^"']*\1/gi, `href=$1mailto:${email}$1`);
+    // Substitui qualquer email no texto que não case com o real
+    out = out.replace(
+      /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi,
+      (match) => (match.toLowerCase() === email.toLowerCase() ? match : email),
+    );
+  }
+
+  // WhatsApp — formata wa.me
+  const whatsappRaw = answers.contactWhatsapp?.trim();
+  if (whatsappRaw) {
+    let wa = whatsappRaw.replace(/\D/g, "");
+    if (wa.length === 10 || wa.length === 11) wa = `55${wa}`; // BR sem DDI
+    out = out.replace(
+      /href=(["'])https?:\/\/(api\.)?wa\.me\/[^"']*\1/gi,
+      `href=$1https://wa.me/${wa}$1`,
+    );
+    out = out.replace(
+      /href=(["'])https?:\/\/(api\.)?whatsapp\.com\/send[^"']*\1/gi,
+      `href=$1https://wa.me/${wa}$1`,
+    );
+  }
+
+  // Endereço — quando aparece "Av. ..." gerada pelo Stitch, substitui pelo real
+  const address = answers.contactAddress?.trim();
+  if (address) {
+    // Substitui só se aparece "Av.", "Rua", "Alameda" + nº — heurística cuidadosa
+    // pra não destruir endereço real igual ou parecido.
+    out = out.replace(
+      /<address[^>]*>([\s\S]{0,300}?)<\/address>/gi,
+      (match, inner) =>
+        inner.toLowerCase().includes(address.slice(0, 15).toLowerCase())
+          ? match
+          : `<address>${escapeHtml(address)}</address>`,
+    );
+  }
+
+  // Nome da empresa — substitui variações estranhas que Stitch inventa
+  const companyName = answers.companyName?.trim();
+  if (companyName) {
+    // Substitui em <title> e em logo text quando houver discrepância de mais de
+    // 2 chars (ex.: "VITALITY" vs "Vitalis Saúde Integrativa")
+    out = out.replace(
+      /<title>([^<]*)<\/title>/i,
+      (match, inner) =>
+        inner.toLowerCase().includes(companyName.slice(0, 6).toLowerCase())
+          ? match
+          : `<title>${escapeHtml(companyName)} | ${inner.split("|").pop()?.trim() ?? "Home"}</title>`,
+    );
+  }
+
+  return out;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

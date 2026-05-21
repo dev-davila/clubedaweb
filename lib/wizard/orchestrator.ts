@@ -2,8 +2,10 @@ import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { generateWizardPage } from "@/lib/stitch/generate-site";
 import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/published-pages";
+import { replaceFakeContacts } from "@/lib/stitch/replace-contacts";
 import { sanitizeStitchHtml } from "@/lib/stitch/sanitize-stitch-html";
 import { standardizePageStyling } from "@/lib/stitch/share-page-styling";
+import { standardizeSiteChrome } from "@/lib/stitch/standardize-chrome";
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -431,14 +433,24 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
       polished[t] = sanitizeStitchHtml(html);
     }
 
-    // Padroniza tema (tailwind config + fontes + <style>) entre as 5 páginas
-    // do MESMO site. Sem isso, Stitch costuma gerar home light e secundárias
-    // dark (ou vice-versa), com tipografias diferentes. Escolhemos uma página
-    // de REFERÊNCIA que case com a preferência do cliente (userMode) — se ele
-    // pediu dark, pegamos a primeira página dark gerada; senão, a home.
+    // Padroniza tema (tailwind config + fontes + <style> + body class) entre
+    // as 5 páginas do MESMO site, usando referência que case com o userMode.
     const userMode = detectUserColorMode(snapshot.answers.colors);
     const referenceKey = pickReferencePage(polished, userMode);
     polished = standardizePageStyling(polished, referenceKey) as Record<RequiredPageType, string>;
+
+    // Header e footer iguais em todas as páginas (chrome único do site).
+    try {
+      polished = standardizeSiteChrome(polished, referenceKey);
+    } catch (err) {
+      // Sem header/footer detectável — segue sem padronizar
+      logger.warn("[publish] standardizeSiteChrome falhou: " + String(err));
+    }
+
+    // Substitui contatos fake do Stitch pelos do briefing
+    for (const t of REQUIRED_PAGE_TYPES) {
+      if (polished[t]) polished[t] = replaceFakeContacts(polished[t], snapshot.answers);
+    }
 
     await publishStitchPages(polished);
   } else if (row?.stitchHtmlCached?.trim()) {

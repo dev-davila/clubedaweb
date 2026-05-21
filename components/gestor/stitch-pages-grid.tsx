@@ -130,7 +130,7 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
                 <div className="flex gap-1.5">
                   {editable ? (
                     <Link
-                      href={`/gestor/editor/${type}`}
+                      href={`/gestor/editor/stitch/${type}`}
                       className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
                     >
                       <FileText size={11} />

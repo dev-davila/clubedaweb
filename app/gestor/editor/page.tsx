@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Edit3, Plus, ExternalLink, Sparkles } from "lucide-react";
 import { listTemplates } from "@/lib/templates";
+import { StitchPagesGrid } from "@/components/gestor/stitch-pages-grid";
 
 export default async function EditorListPage() {
   const pages = await prisma.dynamicPage.findMany({
@@ -30,6 +31,14 @@ export default async function EditorListPage() {
             Edite o conteúdo das páginas dinâmicas com preview ao vivo. Selecione uma página abaixo ou crie uma nova.
           </p>
         </div>
+      </div>
+
+      <StitchPagesGrid />
+
+      <div className="mb-3 mt-10 flex items-end justify-between">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+          Páginas legadas (template antigo, antes do Wizard)
+        </h2>
       </div>
 
       {/* Templates */}

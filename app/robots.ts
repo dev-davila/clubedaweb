@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 // URL imported from constants
 
-const DEFAULT_DISALLOW = ['/admin/', '/gestor/', '/api/', '/gestor/login'];
+const DEFAULT_DISALLOW = ['/admin/', '/gestor/', '/api/', '/gestor/login', '/preview/'];
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   let siteUrl = SITE_BASE_URL;

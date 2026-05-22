@@ -127,5 +127,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...solutionPages, ...catalogPages, ...productLandingPages, ...blogPosts];
+  // Páginas customizadas criadas via wizard Stitch (chaves stitch_html_custom_*)
+  let customStitchPages: MetadataRoute.Sitemap = [];
+  try {
+    const rows = await prisma.siteConfig.findMany({
+      where: { key: { startsWith: 'stitch_html_custom_' } },
+      select: { key: true, updatedAt: true },
+    });
+    customStitchPages = rows.map((r) => ({
+      url: `${SITE_URL}/${r.key.replace('stitch_html_custom_', '')}`,
+      lastModified: r.updatedAt,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }));
+  } catch (error) {
+    console.error('Error fetching Stitch custom pages for sitemap:', error);
+  }
+
+  return [
+    ...staticPages,
+    ...solutionPages,
+    ...catalogPages,
+    ...productLandingPages,
+    ...customStitchPages,
+    ...blogPosts,
+  ];
 }

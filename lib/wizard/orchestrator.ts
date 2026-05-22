@@ -16,6 +16,24 @@ function slugifyForRecord(name: string): string {
     .replace(/^-|-$/g, "")
     .slice(0, 60) || "sem-nome";
 }
+
+const TAG_STOP_WORDS = new Set([
+  "a","o","e","de","do","da","das","dos","para","com","em","no","na","nos","nas",
+  "um","uma","uns","umas","ou","que","se","sua","seu","suas","seus","à","ao","aos","às",
+  "por","sobre","entre","como","onde","quando","esse","essa","este","esta","isso",
+  "the","a","an","and","or","of","for","to","in","on","with","is","by","at","as","be",
+]);
+
+function extractTagKeywords(title: string, max = 4): string[] {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !TAG_STOP_WORDS.has(w))
+    .slice(0, max);
+}
 import { REQUIRED_PAGE_TYPES, type RequiredPageType } from "@/lib/themes/required-pages";
 import { ensureSiteCopy, generateSiteContent, isValidSiteCopy } from "./site-content-generator";
 import { buildFallbackPageHtml } from "@/lib/stitch/fallback-page-html";
@@ -533,7 +551,7 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
             const a = articles[i];
             if (!a.title || !a.slug) continue;
             try {
-              await prisma.blogPost.create({
+              const created = await prisma.blogPost.create({
                 data: {
                   title: a.title,
                   slug: a.slug,
@@ -550,6 +568,27 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
                   categoryId: a.category ? categoryByName.get(a.category) ?? null : null,
                 },
               });
+
+              // Auto-gera 2-4 tags a partir das palavras-chave do título
+              const keywords = extractTagKeywords(a.title);
+              for (const kw of keywords) {
+                const tagSlug = slugifyForRecord(kw);
+                if (!tagSlug) continue;
+                try {
+                  const tag = await prisma.blogTag.upsert({
+                    where: { slug: tagSlug },
+                    update: { name: kw },
+                    create: { name: kw, slug: tagSlug },
+                  });
+                  await prisma.blogPostTag.upsert({
+                    where: { postId_tagId: { postId: created.id, tagId: tag.id } },
+                    update: {},
+                    create: { postId: created.id, tagId: tag.id },
+                  });
+                } catch (te) {
+                  logger.warn(`[publish] tag "${kw}" falhou: ${String(te)}`);
+                }
+              }
             } catch (e) {
               logger.warn(`[publish] seed BlogPost "${a.title}" falhou: ${String(e)}`);
             }

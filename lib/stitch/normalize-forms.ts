@@ -64,9 +64,18 @@ export function normalizeStitchForms(html: string): string {
         // Pula honeypot, submit, checkbox/radio (LGPD opt-in não é campo principal)
         const type = ia.match(/\btype=["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
         if (type === "submit" || type === "button" || type === "hidden" || type === "checkbox" || type === "radio") return m;
-        // Já tem name e é válido?
+        // Se input tem type='email' ou type='tel', SEMPRE force name=email/phone
+        // (ignora existingName errado deixado por normalize anterior).
+        const expectedFromType =
+          type === "email" ? "email" : type === "tel" ? "phone" : null;
+
+        // Já tem name e bate com o type?
         const existingName = ia.match(/\bname=["']([^"']+)["']/i)?.[1];
-        if (existingName && /^(name|email|phone|company|subject|message)$/.test(existingName)) {
+        if (
+          existingName &&
+          /^(name|email|phone|company|subject|message)$/.test(existingName) &&
+          (!expectedFromType || existingName === expectedFromType)
+        ) {
           usedNames.add(existingName);
           return m;
         }

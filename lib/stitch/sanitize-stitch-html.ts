@@ -141,7 +141,11 @@ function normalizeStitchDocument(doc: string): string {
   const cdnScript = headChunk.match(
     /<script[^>]*src=["'][^"']*tailwindcss\.com[^"']*["'][^>]*>\s*<\/script>/i,
   )?.[0];
-  const styleBlock = headChunk.match(/<style[^>]*>[\s\S]*?<\/style>/i)?.[0] ?? "";
+  // Preserva TODOS os <style> do head (Stitch tem o de material-symbols;
+  // polish pode injetar overlay; etc).
+  const styleBlock = [...headChunk.matchAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi)]
+    .map((m) => m[0])
+    .join("\n");
 
   if (!configScript || !cdnScript) return doc;
 

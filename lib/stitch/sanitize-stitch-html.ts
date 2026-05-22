@@ -36,8 +36,12 @@ export function sanitizeStitchHtml(
   // Bug 2 do Stitch: `</style>` no fim do <script id="tailwind-config"> em vez
   // de `</script>`. Faz o body inteiro virar conteúdo do <script>, deixando a
   // página visualmente vazia.
+  //
+  // Negative lookahead garante que não consumimos </style> de styles posteriores
+  // legítimos (ex: overlay injetado pelo polish). Só casa quando NÃO há
+  // </script> entre o <script tailwind-config> e o </style>...</head>.
   doc = doc.replace(
-    /(<script[^>]*id=["']tailwind-config["'][^>]*>[\s\S]*?)<\/style>(\s*<\/head>)/i,
+    /(<script[^>]*id=["']tailwind-config["'][^>]*>(?:(?!<\/script>)[\s\S])*?)<\/style>(\s*<\/head>)/i,
     "$1</script>$2",
   );
 

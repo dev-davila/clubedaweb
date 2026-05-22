@@ -61,7 +61,8 @@ export function normalizeStitchForms(html: string): string {
         // Marca campos críticos como required quando o Stitch não marcou
         const needsReq = (inferred === "name" || inferred === "email" || inferred === "message");
         const hasReq = /\brequired\b/i.test(cleaned);
-        return `<${tag}${cleaned} name="${inferred}"${needsReq && !hasReq ? " required" : ""}>`;
+        const sepInput = cleaned && !cleaned.startsWith(" ") ? " " : "";
+        return `<${tag}${sepInput}${cleaned} name="${inferred}"${needsReq && !hasReq ? " required" : ""}>`;
       },
     );
 
@@ -70,6 +71,7 @@ export function normalizeStitchForms(html: string): string {
       nextBody += `\n<input type="text" name="_hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" />`;
     }
 
-    return `<form${nextAttrs}>${nextBody}</form>`;
+    const sep = nextAttrs && !nextAttrs.startsWith(" ") ? " " : "";
+    return `<form${sep}${nextAttrs}>${nextBody}</form>`;
   });
 }

@@ -312,10 +312,24 @@ export async function advance(input: AdvanceInput): Promise<AdvanceOutput> {
       await updateSnapshot(session.id, nextSnapshot);
     } catch (err) {
       logger.error("[wizard] generate_page failed", String(err));
-      const failed = onThemeGenerationFailed(nextSnapshot, "geração da página");
-      nextSnapshot = failed.next;
-      assistantReply = failed.reply;
-      await updateSnapshot(session.id, nextSnapshot);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isTimeout = /timeout|timed out|abort/i.test(errMsg);
+      const isAuth = /unauthorized|401|invalid.*key|missing.*key/i.test(errMsg);
+      const friendly = isTimeout
+        ? "O Stitch demorou demais pra gerar essa página (mais de 90s). Tenta de novo — costuma funcionar na 2ª tentativa."
+        : isAuth
+          ? "A integração com o Stitch está com problema de autenticação. Avisa o admin — preciso verificar a STITCH_API_KEY."
+          : null;
+      if (friendly) {
+        assistantReply = friendly;
+        nextSnapshot = { ...nextSnapshot, state: "review_page", errorMessage: errMsg.slice(0, 200) };
+        await updateSnapshot(session.id, nextSnapshot);
+      } else {
+        const failed = onThemeGenerationFailed(nextSnapshot, "geração da página");
+        nextSnapshot = failed.next;
+        assistantReply = failed.reply;
+        await updateSnapshot(session.id, nextSnapshot);
+      }
     }
   } else if (effect.kind === "generate_custom_page") {
     try {

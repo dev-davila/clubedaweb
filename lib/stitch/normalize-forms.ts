@@ -42,10 +42,12 @@ export function normalizeStitchForms(html: string): string {
     nextAttrs = nextAttrs.replace(/\s*\bmethod=["'][^"']*["']/gi, "");
     nextAttrs = `${nextAttrs.trim()} method="POST" action="/api/contact"`;
 
-    // Atribui name= aos inputs/textareas/selects baseado em placeholder
+    // Atribui name= aos inputs/textareas/selects baseado em placeholder/label
+    // Estratégia: pra cada <input>, olha o último <label>...</label> antes dele
+    // no body como pista adicional.
     let nextBody = body.replace(
       /<(input|textarea|select)\b([^>]*)>/gi,
-      (m: string, tag: string, ia: string) => {
+      (m: string, tag: string, ia: string, offset: number) => {
         // Pula honeypot e submit
         const type = ia.match(/\btype=["']([^"']+)["']/i)?.[1] ?? "";
         if (type === "submit" || type === "button" || type === "hidden") return m;
@@ -54,7 +56,14 @@ export function normalizeStitchForms(html: string): string {
         if (existingName && /^(name|email|phone|company|subject|message)$/.test(existingName)) {
           return m;
         }
-        const inferred = inferFieldName(`<${tag} ${ia}>`);
+        // Pega último <label>texto</label> no body antes desse input
+        const before = body.slice(0, offset);
+        const labelMatches = [...before.matchAll(/<label\b[^>]*>([\s\S]{0,200}?)<\/label>/gi)];
+        const lastLabel = labelMatches.length > 0
+          ? labelMatches[labelMatches.length - 1][1].replace(/<[^>]+>/g, "").trim()
+          : "";
+        const probe = `<${tag} ${ia} aria-label="${lastLabel}">`;
+        const inferred = inferFieldName(probe);
         if (!inferred) return m;
         // Remove name= existente errado e injeta o correto
         const cleaned = ia.replace(/\s*\bname=["'][^"']*["']/gi, "");

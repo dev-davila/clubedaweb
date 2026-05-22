@@ -16,13 +16,16 @@ interface Props {
   initial: Initial;
 }
 
-const FIELDS: Array<{
+type FieldDef = {
   key: keyof Initial;
   label: string;
   placeholder: string;
-  icon: React.ComponentType<{ size: number; className?: string }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
   type?: string;
-}> = [
+};
+
+const FIELDS: FieldDef[] = [
   { key: "company_name", label: "Nome da empresa", placeholder: "Acme S/A", icon: Building2 },
   { key: "contact_phone", label: "Telefone principal", placeholder: "(11) 4040-5500", icon: Phone },
   { key: "contact_whatsapp", label: "WhatsApp", placeholder: "(11) 99500-8800", icon: MessageCircle },

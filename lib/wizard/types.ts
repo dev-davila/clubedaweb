@@ -100,6 +100,12 @@ export type WizardSideEffect =
       feedback?: string;
       mode?: StitchPipelineMode;
     }
+  | {
+      /** Gerar nova página customizada reusando o stitchProjectId. */
+      kind: "generate_custom_page";
+      slug: string;
+      prompt: string;
+    }
   | { kind: "publish" };
 
 export interface WizardSnapshot {
@@ -120,6 +126,8 @@ export interface WizardSnapshot {
   /** screenId Stitch por página (para edit/variants). */
   stitchScreenIds?: Partial<Record<RequiredPageType, string>>;
   stitchDesignSystemId?: string | null;
+  /** Páginas customizadas criadas via chat. Map de slug → screenId. */
+  customPages?: Record<string, { screenId?: string; status: "generating" | "ready" | "error" }>;
 }
 
 export interface TransitionOutcome {

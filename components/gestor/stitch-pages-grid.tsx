@@ -8,6 +8,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import {
   isStitchSitePublished,
+  listStitchCustomPages,
   stitchHtmlConfigKey,
 } from "@/lib/stitch/published-pages";
 import {
@@ -63,6 +64,7 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
     where: { key: { in: REQUIRED_PAGE_TYPES.map(stitchHtmlConfigKey) } },
   });
   const map = new Map(rows.map((r) => [r.key, r.value]));
+  const customPages = await listStitchCustomPages();
 
   const session = await prisma.wizardSession.findFirst({
     where: { state: "published" },
@@ -158,6 +160,55 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
             </div>
           );
         })}
+
+        {customPages.map((p) => (
+          <div
+            key={p.slug}
+            className="rounded-xl border border-emerald-200 bg-white overflow-hidden hover:border-emerald-500 transition group"
+          >
+            <div className="h-24 flex items-center justify-center text-center px-4 bg-gradient-to-br from-emerald-50 to-white text-emerald-900 border-b border-emerald-100">
+              <div>
+                <div className="text-xs uppercase tracking-wider opacity-60 mb-1">CUSTOM</div>
+                <div className="text-base font-bold">/{p.slug}</div>
+              </div>
+            </div>
+            <div className="p-3.5">
+              <p className="text-xs text-gray-600 mb-2 line-clamp-2">{p.label ?? "Página customizada criada via chat"}</p>
+              <div className="flex items-center justify-between text-[11px] mb-3">
+                <span className="font-mono text-gray-500">/{p.slug}</span>
+                <span className="text-emerald-700 font-semibold">{Math.round(p.bytes / 1024)} KB</span>
+              </div>
+              <div className="flex gap-1.5">
+                {editable ? (
+                  <Link
+                    href={`/gestor/editor/stitch/${p.slug}`}
+                    className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
+                  >
+                    <FileText size={11} />
+                    Editar
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/${p.slug}`}
+                    target="_blank"
+                    className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-900 text-white text-xs font-medium hover:bg-gray-800 transition"
+                  >
+                    <ExternalLink size={11} />
+                    Abrir
+                  </Link>
+                )}
+                <Link
+                  href={`/${p.slug}`}
+                  target="_blank"
+                  className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-50 transition"
+                >
+                  <ExternalLink size={11} />
+                  Ver
+                </Link>
+              </div>
+            </div>
+          </div>
+        ))}
 
         <Link
           href="/gestor/wizard/chat?action=add-page"

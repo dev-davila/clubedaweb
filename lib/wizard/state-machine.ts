@@ -221,6 +221,14 @@ export function transition({ snapshot, message, origin }: TransitionInput): Tran
           sideEffect: { kind: "publish" },
         };
       }
+      const custom = matchCustomPageCommand(trimmed);
+      if (custom) {
+        return {
+          next: snapshot,
+          reply: `Beleza, gerando uma página em **/${custom.slug}**. Aguarda ~1-2min — eu te aviso quando estiver pronto.`,
+          sideEffect: { kind: "generate_custom_page", slug: custom.slug, prompt: custom.prompt },
+        };
+      }
       const adjustMatch = trimmed.match(/ajustar\s+(home|sobre|about|contato|contact|servi[cç]os|services|blog)/i);
       if (adjustMatch) {
         const page = mapAdjustKeyword(adjustMatch[1]);
@@ -259,9 +267,17 @@ export function transition({ snapshot, message, origin }: TransitionInput): Tran
     }
 
     case "published": {
+      const custom = matchCustomPageCommand(trimmed);
+      if (custom) {
+        return {
+          next: snapshot,
+          reply: `Beleza, gerando uma página em **/${custom.slug}**. Aguarda ~1-2min.`,
+          sideEffect: { kind: "generate_custom_page", slug: custom.slug, prompt: custom.prompt },
+        };
+      }
       return {
         next: snapshot,
-        reply: 'Site no ar. Para refazer tudo, use **Reiniciar** ou manda **vamos** em nova sessão.',
+        reply: 'Site no ar. Pra adicionar uma página, manda **cria página /<slug> sobre <X>**. Pra refazer tudo, use **Reiniciar**.',
         sideEffect: { kind: "none" },
       };
     }
@@ -288,6 +304,29 @@ export function transition({ snapshot, message, origin }: TransitionInput): Tran
     default:
       return { next: snapshot, reply: ERROR_GENERIC, sideEffect: { kind: "none" } };
   }
+}
+
+/**
+ * Detecta comando "cria(r) (nova )?página /<slug> sobre/com/de <descrição>".
+ * Aceita variações: "adiciona pagina ...", "nova pagina ...".
+ */
+export function matchCustomPageCommand(text: string): { slug: string; prompt: string } | null {
+  const re = /\b(?:cri(?:a|e|ar)|adicion(?:a|e|ar)|nova)\s+(?:uma\s+)?p[áa]gina\s+\/?([a-zA-Z0-9-]+)\s*(?:sobre|com|de|para|pra)?\s*([\s\S]*)/i;
+  const m = text.match(re);
+  if (!m) return null;
+  const rawSlug = (m[1] || "").trim();
+  if (!rawSlug) return null;
+  const slug = rawSlug
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  if (!slug) return null;
+  const prompt = (m[2] || "").trim() || `Página /${slug} do site institucional`;
+  return { slug, prompt };
 }
 
 function mapAdjustKeyword(word: string): RequiredPageType | null {

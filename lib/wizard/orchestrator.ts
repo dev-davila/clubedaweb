@@ -298,6 +298,60 @@ export async function advance(input: AdvanceInput): Promise<AdvanceOutput> {
       assistantReply = failed.reply;
       await updateSnapshot(session.id, nextSnapshot);
     }
+  } else if (effect.kind === "generate_custom_page") {
+    try {
+      const { generateCustomPage, isReservedSlug } = await import("@/lib/stitch/custom-page-generator");
+      const { stitchCustomHtmlConfigKey } = await import("@/lib/stitch/published-pages");
+      if (isReservedSlug(effect.slug)) {
+        assistantReply = `O slug "/${effect.slug}" é reservado pelo sistema. Tenta outro nome (ex: /lgpd-2026, /casos).`;
+      } else {
+        // Marca status no snapshot
+        const customPages = { ...(nextSnapshot.customPages ?? {}), [effect.slug]: { status: "generating" as const } };
+        await updateSnapshot(session.id, { ...nextSnapshot, customPages });
+
+        const logoRow = await prisma.siteConfig.findUnique({ where: { key: "logo_url" } }).catch(() => null);
+        const result = await generateCustomPage({
+          projectId: nextSnapshot.stitchScreenIds && Object.keys(nextSnapshot.stitchScreenIds).length > 0
+            ? (await prisma.wizardSession.findUnique({ where: { id: session.id } }))?.stitchProjectId ?? null
+            : null,
+          slug: effect.slug,
+          userPrompt: effect.prompt,
+          answers: nextSnapshot.answers,
+          logoUrl: logoRow?.value ?? null,
+        });
+
+        // Persiste no SiteConfig
+        await prisma.siteConfig.upsert({
+          where: { key: stitchCustomHtmlConfigKey(effect.slug) },
+          update: { value: result.html, category: "wizard", label: `HTML Stitch — /${effect.slug} (custom)` },
+          create: {
+            key: stitchCustomHtmlConfigKey(effect.slug),
+            value: result.html,
+            category: "wizard",
+            label: `HTML Stitch — /${effect.slug} (custom)`,
+          },
+        });
+
+        const customPagesNext = {
+          ...customPages,
+          [effect.slug]: { status: "ready" as const, screenId: result.screenId },
+        };
+        nextSnapshot = { ...nextSnapshot, customPages: customPagesNext };
+        await updateSnapshot(session.id, nextSnapshot);
+
+        const origin = input.origin || "";
+        assistantReply = `Página **/${effect.slug}** pronta! Abre em ${origin}/${effect.slug} ou edite em ${origin}/gestor/editor/stitch/${effect.slug}.`;
+      }
+    } catch (err) {
+      logger.error("[wizard] generate_custom_page failed", String(err));
+      const customPages = {
+        ...(nextSnapshot.customPages ?? {}),
+        [effect.slug]: { status: "error" as const },
+      };
+      nextSnapshot = { ...nextSnapshot, customPages };
+      await updateSnapshot(session.id, nextSnapshot);
+      assistantReply = `Não consegui gerar /${effect.slug} agora. Tenta novamente em ~1min ou descreve com mais detalhe.`;
+    }
   } else if (effect.kind === "publish") {
     try {
       await applyPublished(session.id, nextSnapshot);

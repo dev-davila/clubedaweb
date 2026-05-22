@@ -9,6 +9,40 @@ export function stitchHtmlConfigKey(pageType: RequiredPageType): string {
   return `stitch_html_${pageType}`;
 }
 
+/** Chave de SiteConfig pra uma página custom criada via chat. */
+export function stitchCustomHtmlConfigKey(slug: string): string {
+  return `stitch_html_custom_${slug}`;
+}
+
+/** Lê HTML de uma página custom publicada. */
+export async function getPublishedStitchCustomHtml(slug: string): Promise<string | null> {
+  try {
+    const mode = await prisma.siteConfig.findUnique({
+      where: { key: SITE_RENDER_MODE_KEY },
+    });
+    if (mode?.value !== STITCH_RENDER_MODE) return null;
+    const row = await prisma.siteConfig.findUnique({
+      where: { key: stitchCustomHtmlConfigKey(slug) },
+    });
+    const html = row?.value?.trim();
+    return html && html.length > 0 ? html : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lista todas as páginas custom publicadas (slug + bytes). */
+export async function listStitchCustomPages(): Promise<{ slug: string; bytes: number; label?: string }[]> {
+  const rows = await prisma.siteConfig.findMany({
+    where: { key: { startsWith: "stitch_html_custom_" } },
+  });
+  return rows.map((r) => ({
+    slug: r.key.replace("stitch_html_custom_", ""),
+    bytes: r.value?.length ?? 0,
+    label: r.label ?? undefined,
+  }));
+}
+
 export type StitchPagesMap = Partial<Record<RequiredPageType, string>>;
 
 export interface PublishablePagesCheck {

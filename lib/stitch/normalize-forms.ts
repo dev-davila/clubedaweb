@@ -17,16 +17,24 @@ const FIELD_MAP: Array<[RegExp, string]> = [
 ];
 
 function inferFieldName(input: string): string | null {
-  // Tenta placeholder, name, id, aria-label, label associada
+  // Prioriza aria-label > name > id > placeholder (semântica > artefato).
+  // Placeholder de email tipo "rodrigo@empresa.com.br" tem "empresa" e
+  // dispararia falso positivo no map de company se viesse primeiro.
   const candidates: string[] = [];
-  const ph = input.match(/placeholder=["']([^"']+)["']/i)?.[1];
-  if (ph) candidates.push(ph);
-  const nm = input.match(/\bname=["']([^"']+)["']/i)?.[1];
-  if (nm) candidates.push(nm);
   const aria = input.match(/aria-label=["']([^"']+)["']/i)?.[1];
   if (aria) candidates.push(aria);
+  const nm = input.match(/\bname=["']([^"']+)["']/i)?.[1];
+  if (nm) candidates.push(nm);
   const id = input.match(/\bid=["']([^"']+)["']/i)?.[1];
   if (id) candidates.push(id);
+  const ph = input.match(/placeholder=["']([^"']+)["']/i)?.[1];
+  if (ph) candidates.push(ph);
+
+  // Heurística adicional pelo TYPE do input — "type=email" → email direto
+  const type = input.match(/\btype=["']([^"']+)["']/i)?.[1]?.toLowerCase();
+  if (type === "email") return "email";
+  if (type === "tel") return "phone";
+
   for (const c of candidates) {
     for (const [re, mapped] of FIELD_MAP) if (re.test(c)) return mapped;
   }
@@ -46,18 +54,20 @@ export function normalizeStitchForms(html: string): string {
     nextAttrs = nextAttrs.replace(/\s*\bmethod=["'][^"']*["']/gi, "");
     nextAttrs = `${nextAttrs.trim()} method="POST" action="/api/contact"`;
 
-    // Atribui name= aos inputs/textareas/selects baseado em placeholder/label
-    // Estratégia: pra cada <input>, olha o último <label>...</label> antes dele
-    // no body como pista adicional.
+    // Atribui name= aos inputs/textareas/selects baseado em placeholder/label.
+    // Rastreia nomes já atribuídos pra não duplicar (LGPD checkbox próximo
+    // a um label "Mensagem" geraria 3 "message" se não filtrar).
+    const usedNames = new Set<string>();
     let nextBody = body.replace(
       /<(input|textarea|select)\b([^>]*)>/gi,
       (m: string, tag: string, ia: string, offset: number) => {
-        // Pula honeypot e submit
-        const type = ia.match(/\btype=["']([^"']+)["']/i)?.[1] ?? "";
-        if (type === "submit" || type === "button" || type === "hidden") return m;
+        // Pula honeypot, submit, checkbox/radio (LGPD opt-in não é campo principal)
+        const type = ia.match(/\btype=["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
+        if (type === "submit" || type === "button" || type === "hidden" || type === "checkbox" || type === "radio") return m;
         // Já tem name e é válido?
         const existingName = ia.match(/\bname=["']([^"']+)["']/i)?.[1];
         if (existingName && /^(name|email|phone|company|subject|message)$/.test(existingName)) {
+          usedNames.add(existingName);
           return m;
         }
         // Pega último <label>texto</label> no body antes desse input
@@ -69,6 +79,9 @@ export function normalizeStitchForms(html: string): string {
         const probe = `<${tag} ${ia} aria-label="${lastLabel}">`;
         const inferred = inferFieldName(probe);
         if (!inferred) return m;
+        // Se já foi usado (ex: 2º "message" candidato), pula
+        if (usedNames.has(inferred)) return m;
+        usedNames.add(inferred);
         // Remove name= existente errado e injeta o correto
         const cleaned = ia.replace(/\s*\bname=["'][^"']*["']/gi, "");
         // Marca campos críticos como required quando o Stitch não marcou

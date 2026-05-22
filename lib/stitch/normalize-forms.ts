@@ -34,6 +34,10 @@ function inferFieldName(input: string): string | null {
 }
 
 export function normalizeStitchForms(html: string): string {
+  // Conserta um bug do polish antigo: '<formclass=' sem espaço entre tag e attr.
+  // Idempotente.
+  html = html.replace(/<form([^\s>])/gi, "<form $1");
+
   return html.replace(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi, (_match, attrs, body) => {
     // Reescreve action + method
     let nextAttrs = attrs;

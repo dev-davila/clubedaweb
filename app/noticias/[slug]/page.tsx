@@ -13,6 +13,7 @@ import { ViewTracker } from "@/components/noticias/view-tracker";
 import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
+import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { wrapPostInStitchChrome } from "@/lib/stitch/inject-blog-posts";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
@@ -138,10 +139,11 @@ export default async function NoticiaPage({ params }: { params: Promise<{ slug: 
       publishedAt: post.publishedAt ?? post.createdAt,
       content: contentHtml,
     });
+    const final = await applyCurrentContacts(wrapped);
     return (
       <>
         <ViewTracker slug={slug} />
-        <StitchPageView html={wrapped} fullViewport />
+        <StitchPageView html={final} fullViewport />
       </>
     );
   }

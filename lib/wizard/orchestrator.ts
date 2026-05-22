@@ -575,8 +575,12 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
   if (a.contactEmail) updates.push({ key: "contact_email", value: a.contactEmail, category: "contact" });
   if (a.contactWhatsapp) updates.push({ key: "contact_whatsapp", value: a.contactWhatsapp, category: "contact" });
   if (a.contactAddress) updates.push({ key: "contact_address", value: a.contactAddress, category: "contact" });
+  if (a.contactHours) updates.push({ key: "contact_hours", value: a.contactHours, category: "contact" });
 
   for (const u of updates) {
+    // Não sobrescreve valor editado pelo gestor: só seeda se ainda não existe.
+    const existing = await prisma.siteConfig.findUnique({ where: { key: u.key } });
+    if (existing?.value && existing.value.trim().length > 0) continue;
     await prisma.siteConfig.upsert({
       where: { key: u.key },
       update: { value: u.value, category: u.category ?? "branding" },

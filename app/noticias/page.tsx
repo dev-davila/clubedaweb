@@ -7,6 +7,7 @@ import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
 import { injectBlogPostsList } from "@/lib/stitch/inject-blog-posts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
+import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
 
@@ -60,7 +61,8 @@ export default async function NoticiasPage({
         publishedAt: p.publishedAt ?? p.createdAt,
       })),
     );
-    return <StitchPageView html={withPosts} fullViewport />;
+    const final = await applyCurrentContacts(withPosts);
+    return <StitchPageView html={final} fullViewport />;
   }
   // Fallback: usa template legado (Stitch não publicado ainda)
   const stitch = await tryRenderStitchPublicPage("blog");

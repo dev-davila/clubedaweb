@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
+import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import {
@@ -34,5 +35,6 @@ export default async function StitchCustomPage({ params }: Props) {
   const menuItems = await getStitchMenuItems();
   let finalHtml = applyMenuLabels(html, menuItems);
   finalHtml = applyActiveMenu(finalHtml, `/${slug}`);
+  finalHtml = await applyCurrentContacts(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

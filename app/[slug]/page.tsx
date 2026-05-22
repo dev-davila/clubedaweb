@@ -6,6 +6,8 @@ import { StitchPageView } from "@/components/stitch/stitch-page-view";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { injectFormHandler } from "@/lib/stitch/inject-form-handler";
+import { injectHeroOverlay } from "@/lib/stitch/inject-hero-overlay";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import {
   getPublishedStitchCustomHtml,
@@ -35,6 +37,8 @@ export default async function StitchCustomPage({ params }: Props) {
   const menuItems = await getStitchMenuItems();
   let finalHtml = applyMenuLabels(html, menuItems);
   finalHtml = applyActiveMenu(finalHtml, `/${slug}`);
+  finalHtml = injectHeroOverlay(finalHtml);
+  finalHtml = injectFormHandler(finalHtml);
   finalHtml = await applyCurrentContacts(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

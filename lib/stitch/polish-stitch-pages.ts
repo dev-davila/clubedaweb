@@ -22,6 +22,7 @@ import type { WizardAnswers } from "@/lib/wizard/types";
 import { detectUserColorMode } from "@/lib/wizard/design-themes";
 import { applyMenuLabels } from "./apply-menu-labels";
 import { injectClientLogo } from "./inject-logo";
+import { injectFormHandler } from "./inject-form-handler";
 import { injectHeroOverlay } from "./inject-hero-overlay";
 import type { StitchMenuItem } from "./menu-items";
 import { normalizeStitchForms } from "./normalize-forms";
@@ -114,6 +115,11 @@ export function polishStitchPages(
   // 6.5) Hero com bg-image → injeta dark overlay + texto branco
   for (const t of REQUIRED_PAGE_TYPES) {
     if (polished[t]) polished[t] = injectHeroOverlay(polished[t]!);
+  }
+
+  // 6.6) Forms /api/contact → handler JS pra fetch + toast
+  for (const t of REQUIRED_PAGE_TYPES) {
+    if (polished[t]) polished[t] = injectFormHandler(polished[t]!);
   }
 
   // 7) labels do menu editados pelo gestor sobrescrevem o que veio do Stitch

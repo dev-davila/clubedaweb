@@ -33,8 +33,26 @@ const HERO_OVERLAY_CSS = `
     text-shadow: 0 2px 12px rgba(0,0,0,0.4);
   }
   section[data-cdw-hero-overlay="1"] span[class*="bg-"] {
-    /* badges com bg próprio mantêm contraste — só garantia visual */
     backdrop-filter: blur(2px);
+  }
+  /* Botões outline (border + bg transparente) ficam INVISÍVEIS sobre overlay
+     dark. Forçamos border branca, texto branco e bg sutil. */
+  section[data-cdw-hero-overlay="1"] a[class*="border"]:not([class*="border-b-"]),
+  section[data-cdw-hero-overlay="1"] button[class*="border"]:not([class*="border-b-"]) {
+    border-color: rgba(255,255,255,0.85) !important;
+    color: #ffffff !important;
+    background-color: rgba(255,255,255,0.08) !important;
+    backdrop-filter: blur(4px);
+  }
+  section[data-cdw-hero-overlay="1"] a[class*="border"]:hover,
+  section[data-cdw-hero-overlay="1"] button[class*="border"]:hover {
+    background-color: rgba(255,255,255,0.18) !important;
+  }
+  /* Botões sólidos com bg-primary etc — só garantia de sombra pra destacar
+     do overlay (sem mudar a cor). */
+  section[data-cdw-hero-overlay="1"] a[class*="bg-primary"],
+  section[data-cdw-hero-overlay="1"] button[class*="bg-primary"] {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
 </style>
 `;

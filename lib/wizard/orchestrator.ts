@@ -5,6 +5,7 @@ import { assertPublishablePages, publishStitchPages } from "@/lib/stitch/publish
 import { polishStitchPages } from "@/lib/stitch/polish-stitch-pages";
 import { getStitchMenuItems, saveStitchMenuItems, defaultMenuItems } from "@/lib/stitch/menu-items";
 import { extractBlogArticles } from "@/lib/stitch/extract-blog-articles";
+import { generateBlogContentsBatch } from "./blog-content-generator";
 
 function slugifyForRecord(name: string): string {
   return name
@@ -515,8 +516,21 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
             categoryByName.set(catName, cat.id);
           }
 
-          // 3) Posts com vínculo de categoria + autor + tag mesma categoria
-          for (const a of articles) {
+          // 3) Gera conteúdo real de TODOS os posts em paralelo (3 simultâneos)
+          // antes de criar — evita placeholders no blog publicado.
+          const contentInputs = articles.map((a) => ({
+            title: a.title,
+            excerpt: a.excerpt,
+            category: a.category,
+            tone: snapshot.answers.tone,
+            companyName: snapshot.answers.companyName,
+            industry: snapshot.answers.industry,
+          }));
+          logger.info(`[publish] gerando conteúdo de ${articles.length} posts via IA…`);
+          const generatedContents = await generateBlogContentsBatch(contentInputs, 3);
+
+          for (let i = 0; i < articles.length; i++) {
+            const a = articles[i];
             if (!a.title || !a.slug) continue;
             try {
               await prisma.blogPost.create({
@@ -524,13 +538,14 @@ async function applyPublished(sessionId: string, snapshot: WizardSnapshot) {
                   title: a.title,
                   slug: a.slug,
                   excerpt: a.excerpt || null,
-                  content: `<p>${a.excerpt || a.title}</p>\n<p><em>Conteúdo gerado pelo wizard — edite pelo /gestor/posts.</em></p>`,
+                  content: generatedContents[i] ?? `<p>${a.excerpt || a.title}</p>`,
                   contentHtml: null,
                   featuredImage: a.featuredImage || null,
                   status: "PUBLISHED",
                   publishedAt: new Date(),
                   aiGenerated: true,
-                  aiModel: "stitch",
+                  aiModel: "claude-via-abacus",
+                  aiGeneratedAt: new Date(),
                   authorId: author.id,
                   categoryId: a.category ? categoryByName.get(a.category) ?? null : null,
                 },

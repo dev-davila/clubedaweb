@@ -6,6 +6,7 @@ import { StitchPageView } from "@/components/stitch/stitch-page-view";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { injectChromeFromHome } from "@/lib/stitch/inject-chrome-from-home";
 import { injectFormHandler } from "@/lib/stitch/inject-form-handler";
 import { injectHeroOverlay } from "@/lib/stitch/inject-hero-overlay";
 import { validateAndFixLinks } from "@/lib/stitch/validate-links";
@@ -34,8 +35,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StitchCustomPage({ params }: Props) {
   const { slug } = await params;
   if (!(await isStitchSitePublished())) notFound();
-  const html = await getPublishedStitchCustomHtml(slug);
-  if (!html) notFound();
+  const rawHtml = await getPublishedStitchCustomHtml(slug);
+  if (!rawHtml) notFound();
+
+  // O Stitch costuma gerar um header/footer simplificado pra páginas custom
+  // (vimos casos de 5 CTAs "Contato" repetidos). Reaproveita o chrome canônico
+  // da home publicada — o resto do pipeline opera em cima dele.
+  const html = await injectChromeFromHome(rawHtml);
 
   const menuItems = await getStitchMenuItems();
   const [customPages, blogPosts] = await Promise.all([

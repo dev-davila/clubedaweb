@@ -8,6 +8,9 @@ import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { injectFormHandler } from "@/lib/stitch/inject-form-handler";
 import { injectHeroOverlay } from "@/lib/stitch/inject-hero-overlay";
+import { validateAndFixLinks } from "@/lib/stitch/validate-links";
+import { listStitchCustomPages } from "@/lib/stitch/published-pages";
+import { prisma } from "@/lib/db";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import {
   getPublishedStitchCustomHtml,
@@ -35,8 +38,16 @@ export default async function StitchCustomPage({ params }: Props) {
   if (!html) notFound();
 
   const menuItems = await getStitchMenuItems();
+  const [customPages, blogPosts] = await Promise.all([
+    listStitchCustomPages(),
+    prisma.blogPost.findMany({ where: { status: "PUBLISHED", deletedAt: null }, select: { slug: true } }),
+  ]);
   let finalHtml = applyMenuLabels(html, menuItems);
   finalHtml = applyActiveMenu(finalHtml, `/${slug}`);
+  finalHtml = validateAndFixLinks(finalHtml, {
+    customSlugs: customPages.map((p) => p.slug),
+    blogSlugs: blogPosts.map((b) => b.slug),
+  });
   finalHtml = injectHeroOverlay(finalHtml);
   finalHtml = injectFormHandler(finalHtml);
   finalHtml = await applyCurrentContacts(finalHtml);

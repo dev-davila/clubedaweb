@@ -211,7 +211,7 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
         ))}
 
         <Link
-          href="/gestor/wizard/chat?action=add-page"
+          href="/gestor/paginas"
           className="rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-500 transition flex flex-col items-center justify-center p-6 text-center group"
         >
           <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-2 group-hover:bg-emerald-200 transition">
@@ -219,7 +219,7 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
           </div>
           <div className="text-sm font-bold text-emerald-900">Nova página com IA</div>
           <div className="text-[11px] text-emerald-800/70 mt-1 max-w-[160px]">
-            Descreva o que precisa — a IA gera no mesmo estilo das 5 páginas
+            Vai pra <strong>/gestor/paginas</strong> e clica em &quot;Nova página com IA&quot;
           </div>
         </Link>
       </div>

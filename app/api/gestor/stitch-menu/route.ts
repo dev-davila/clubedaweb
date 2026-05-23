@@ -13,8 +13,12 @@ import { REQUIRED_PAGE_TYPES } from "@/lib/themes/required-pages";
 export const dynamic = "force-dynamic";
 
 const itemSchema = z.object({
-  type: z.enum(REQUIRED_PAGE_TYPES as unknown as [string, ...string[]]),
+  type: z.union([
+    z.enum(REQUIRED_PAGE_TYPES as unknown as [string, ...string[]]),
+    z.literal("custom"),
+  ]),
   label: z.string().min(1).max(80),
+  route: z.string().optional(),
   visible: z.boolean().optional(),
 });
 
@@ -37,7 +41,7 @@ export async function PUT(request: NextRequest) {
     const items: StitchMenuItem[] = body.items.map((i, idx) => ({
       type: i.type as StitchMenuItem["type"],
       label: i.label,
-      route: "",
+      route: i.route ?? "",
       order: idx,
       visible: i.visible !== false,
     }));

@@ -14,8 +14,8 @@ import {
 export const STITCH_MENU_KEY = "stitch_menu_items";
 
 export interface StitchMenuItem {
-  /** Tipo da página obrigatória (chave estável). */
-  type: RequiredPageType;
+  /** Tipo da página: obrigatória (home/about/...) ou "custom". */
+  type: RequiredPageType | "custom";
   /** Texto exibido no header. */
   label: string;
   /** Rota pública. */
@@ -72,20 +72,37 @@ export async function getStitchMenuItems(): Promise<StitchMenuItem[]> {
 }
 
 export async function saveStitchMenuItems(items: StitchMenuItem[]): Promise<void> {
-  // Normaliza: garante 5 obrigatórias, type único, order sequencial
-  const seen = new Set<RequiredPageType>();
-  const sane = items
-    .filter((i) => REQUIRED_PAGE_TYPES.includes(i.type) && !seen.has(i.type) && seen.add(i.type))
-    .map((i, idx) => ({
-      type: i.type,
-      label: (i.label ?? DEFAULT_LABELS[i.type]).trim() || DEFAULT_LABELS[i.type],
-      route: SITE_PAGE_ROUTES[i.type],
-      order: idx,
-      visible: i.visible !== false,
-    }));
+  // Normaliza: dedup obrigatórias por type, custom por route. Garante as 5
+  // obrigatórias presentes. Preserva itens custom.
+  const seenRequired = new Set<RequiredPageType>();
+  const seenRoute = new Set<string>();
+  const sane: StitchMenuItem[] = [];
+  for (const i of items) {
+    if (i.type === "custom") {
+      if (!i.route || seenRoute.has(i.route)) continue;
+      seenRoute.add(i.route);
+      sane.push({
+        type: "custom",
+        label: (i.label ?? "").trim() || i.route.replace(/^\//, ""),
+        route: i.route,
+        order: sane.length,
+        visible: i.visible !== false,
+      });
+    } else if (REQUIRED_PAGE_TYPES.includes(i.type) && !seenRequired.has(i.type)) {
+      seenRequired.add(i.type);
+      seenRoute.add(SITE_PAGE_ROUTES[i.type]);
+      sane.push({
+        type: i.type,
+        label: (i.label ?? DEFAULT_LABELS[i.type]).trim() || DEFAULT_LABELS[i.type],
+        route: SITE_PAGE_ROUTES[i.type],
+        order: sane.length,
+        visible: i.visible !== false,
+      });
+    }
+  }
   // Completa com obrigatórias faltantes
   for (const t of REQUIRED_PAGE_TYPES) {
-    if (!seen.has(t)) {
+    if (!seenRequired.has(t)) {
       sane.push({
         type: t,
         label: DEFAULT_LABELS[t],
@@ -95,6 +112,8 @@ export async function saveStitchMenuItems(items: StitchMenuItem[]): Promise<void
       });
     }
   }
+  // Re-normaliza order sequencial
+  sane.forEach((it, idx) => { it.order = idx; });
 
   await prisma.siteConfig.upsert({
     where: { key: STITCH_MENU_KEY },

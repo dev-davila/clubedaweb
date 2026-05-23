@@ -17,8 +17,48 @@ export function applyMenuLabels(html: string, items: StitchMenuItem[]): string {
     // Só toca em <a> que estão DENTRO de <nav> (links de navegação reais).
     // O brand/logo do header costuma ser um <a> direto pra "/" ou "/contato"
     // que NÃO está dentro de <nav> — não pode ser sobrescrito.
-    return header.replace(/<nav\b[\s\S]*?<\/nav>/gi, (nav) => rewriteNavLinks(nav, items));
+    return header.replace(/<nav\b[\s\S]*?<\/nav>/gi, (nav) => {
+      let next = rewriteNavLinks(nav, items);
+      next = insertMissingLinks(next, items);
+      return next;
+    });
   });
+}
+
+/**
+ * Insere <a> pra cada item do menu cuja rota AINDA NÃO existe no nav.
+ * Usa o primeiro <a> existente como template (mantém classes).
+ */
+function insertMissingLinks(navHtml: string, items: StitchMenuItem[]): string {
+  const existingRoutes = new Set<string>();
+  for (const m of navHtml.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["']/gi)) {
+    existingRoutes.add(m[1]);
+  }
+  const toInsert = items.filter((i) => i.visible !== false && !existingRoutes.has(i.route));
+  if (toInsert.length === 0) return navHtml;
+
+  // Pega template do primeiro <a> visível com classes (atributos preservados,
+  // mas href/texto substituídos por item.route/item.label)
+  const templateMatch = navHtml.match(/<a\b([^>]*)>([\s\S]*?)<\/a>/i);
+  if (!templateMatch) return navHtml;
+  const templateAttrs = templateMatch[1];
+  const newAnchors = toInsert
+    .map((i) => {
+      const attrs = templateAttrs
+        .replace(/\bhref=["'][^"']*["']/i, `href="${i.route}"`)
+        .replace(/\baria-current=["'][^"']*["']/gi, "");
+      const hasHref = /\bhref=/i.test(attrs);
+      const finalAttrs = hasHref ? attrs : `${attrs} href="${i.route}"`;
+      return `<a${finalAttrs}>${escapeHtml(i.label)}</a>`;
+    })
+    .join("\n");
+
+  // Insere antes do último </a> de nav (mantém botão CTA final se houver)
+  const lastClose = navHtml.lastIndexOf("</a>");
+  if (lastClose < 0) return navHtml + newAnchors;
+  // Posiciona DEPOIS do último <a> existente (logo após o close)
+  const insertAt = lastClose + "</a>".length;
+  return navHtml.slice(0, insertAt) + "\n" + newAnchors + navHtml.slice(insertAt);
 }
 
 function rewriteNavLinks(navHtml: string, items: StitchMenuItem[]): string {

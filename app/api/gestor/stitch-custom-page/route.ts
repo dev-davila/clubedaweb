@@ -81,9 +81,7 @@ export async function POST(request: NextRequest) {
           .replace(/\b\w/g, (c) => c.toUpperCase())
           .slice(0, 40);
         const newItem: StitchMenuItem = {
-          // type custom — usaremos same union string mas com slug; menu
-          // schema acepta qualquer routavel
-          type: "blog", // marca como blog-like só pra passar validação (rota é o que importa)
+          type: "custom",
           label,
           route: `/${slug}`,
           order: items.length,

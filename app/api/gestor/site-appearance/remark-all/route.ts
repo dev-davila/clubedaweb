@@ -23,10 +23,10 @@ export async function POST() {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-    // Pega contatos atuais (que vão ser usados pra detectar o que marcar)
-    const current = await getCurrentSiteContacts();
-
-    // Fallback nos answers do briefing se faltar algum campo
+    // O HTML salvo no DB tem os valores DO BRIEFING (gerados/substituídos no
+    // publish original). Pra marcar onde estão, precisamos passar EXATAMENTE
+    // os valores do briefing. Se algum campo só existe no SiteConfig (ex.:
+    // editado por curl direto), também tenta com ele.
     const wizardSession = await prisma.wizardSession.findFirst({
       where: { state: "published" },
       orderBy: { updatedAt: "desc" },
@@ -34,9 +34,11 @@ export async function POST() {
     const briefingAnswers =
       (wizardSession?.data as { answers?: WizardAnswers } | null)?.answers ?? {};
 
+    const current = await getCurrentSiteContacts();
+    // Briefing tem prioridade — é o que está no HTML salvo
     const answers: WizardAnswers = {
-      ...briefingAnswers,
       ...Object.fromEntries(Object.entries(current).filter(([, v]) => v)),
+      ...briefingAnswers,
     };
 
     // Lê todos os HTMLs Stitch (obrigatórias + customs)

@@ -37,9 +37,25 @@ async function getSEOMetaTags() {
   }
 }
 
+async function getAppearanceImages() {
+  try {
+    const rows = await prisma.siteConfig.findMany({
+      where: { key: { in: ["favicon_url", "og_image_url"] } },
+    });
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value?.trim() ?? ""]));
+    return {
+      faviconUrl: map.favicon_url || "/favicon.svg",
+      ogImage: map.og_image_url || "/og-image.png",
+    };
+  } catch {
+    return { faviconUrl: "/favicon.svg", ogImage: "/og-image.png" };
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const seoTags = await getSEOMetaTags();
   const site = await getSiteConfigServer();
+  const images = await getAppearanceImages();
   const company = site.companyName || "M3Solutions";
   const tagline = site.tagline || "Soluções completas para sua empresa.";
 
@@ -66,17 +82,17 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: company,
       title: company,
       description: tagline,
-      images: ["/og-image.png"]
+      images: [images.ogImage]
     },
     twitter: {
       card: "summary_large_image",
       title: company,
       description: tagline,
-      images: ["/og-image.png"]
+      images: [images.ogImage]
     },
     icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg"
+      icon: images.faviconUrl,
+      shortcut: images.faviconUrl
     },
     other: otherMeta
   };

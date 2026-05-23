@@ -9,21 +9,25 @@ import type { WizardAnswers } from "@/lib/wizard/types";
 export function replaceFakeContacts(html: string, answers: WizardAnswers): string {
   let out = html;
 
-  // Telefone — substitui qualquer tel:XXXX e exibições no texto
+  // Telefone — substitui tel:XXX e qualquer ocorrência textual de telefone
+  // brasileiro formatado. Idempotência: se o número já bate (mesmos dígitos
+  // que o novo), preserva o match. Caso contrário, troca pelo formato canônico.
   const phone = answers.contactPhone?.trim();
   if (phone) {
-    const digits = phone.replace(/\D/g, "");
-    // tel:XXXX
-    out = out.replace(/href=(["'])tel:[^"']*\1/gi, `href=$1tel:${digits}$1`);
-    // Texto exibido entre tags — só substitui se Stitch usou número diferente
-    // ex.: `>11 9999-9999<` ou `>(11) 99999-9999<` — preserva números legítimos
-    // que casam com o telefone real.
-    if (digits.length >= 8) {
-      const display = phone;
-      out = out.replace(
-        />\s*\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}\s*</g,
-        (match) => (match.includes(digits.slice(0, 4)) ? match : `>${display}<`),
-      );
+    const newDigits = phone.replace(/\D/g, "");
+    if (newDigits.length >= 8) {
+      // tel:XXXX
+      out = out.replace(/href=(["'])tel:[^"']*\1/gi, `href=$1tel:${newDigits}$1`);
+      // Texto puro: 10 ou 11 dígitos formatados em (DD) NNNNN-NNNN ou variantes.
+      // Limites \b ajudam a evitar pegar dígitos de meio de string maior.
+      const phoneRe = /(?<!\d)\(?(\d{2})\)?[\s.-]?(9?\d{4})[\s.-]?(\d{4})(?!\d)/g;
+      out = out.replace(phoneRe, (match) => {
+        const matchDigits = match.replace(/\D/g, "");
+        // Idempotência: dígitos batem exato com o novo telefone → preserva
+        if (matchDigits === newDigits) return match;
+        // Dígitos diferentes → substitui pela formatação que o user usou
+        return phone;
+      });
     }
   }
 

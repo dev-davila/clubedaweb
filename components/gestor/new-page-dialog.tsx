@@ -97,7 +97,7 @@ export function NewPageDialog() {
                     value={slug}
                     onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
                     placeholder="cardapio"
-                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 font-mono"
+                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 font-mono"
                     disabled={busy}
                   />
                 </div>
@@ -115,7 +115,7 @@ export function NewPageDialog() {
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={4}
                   placeholder="Ex: Apresentar nossos cafés especiais filtrados e espresso, com preços e descrição dos métodos."
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   disabled={busy}
                 />
               </div>
@@ -143,7 +143,7 @@ export function NewPageDialog() {
                       value={menuLabel}
                       onChange={(e) => setMenuLabel(e.target.value)}
                       placeholder={slug ? `Default: ${slug.replace(/-/g, " ")}` : "Texto que aparece no menu (opcional)"}
-                      className="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      className="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                       disabled={busy}
                     />
                   </div>

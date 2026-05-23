@@ -1,40 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Phone, Mail, MessageCircle, MapPin, Clock, Building2 } from "lucide-react";
+import { Check, Loader2, Instagram, Facebook, Linkedin, Youtube, Music } from "lucide-react";
 
 interface Initial {
-  contact_phone: string;
-  contact_email: string;
-  contact_whatsapp: string;
-  contact_address: string;
-  contact_hours: string;
-  company_name: string;
+  social_instagram: string;
+  social_facebook: string;
+  social_linkedin: string;
+  social_youtube: string;
+  social_tiktok: string;
 }
 
 interface Props {
   initial: Initial;
 }
 
-type FieldDef = {
+interface FieldDef {
   key: keyof Initial;
   label: string;
   placeholder: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any;
-  type?: string;
-};
+}
 
 const FIELDS: FieldDef[] = [
-  { key: "company_name", label: "Nome da empresa", placeholder: "Acme S/A", icon: Building2 },
-  { key: "contact_phone", label: "Telefone principal", placeholder: "(11) 4040-5500", icon: Phone },
-  { key: "contact_whatsapp", label: "WhatsApp", placeholder: "(11) 99500-8800", icon: MessageCircle },
-  { key: "contact_email", label: "E-mail", placeholder: "contato@empresa.com", icon: Mail, type: "email" },
-  { key: "contact_address", label: "Endereço", placeholder: "Av. Paulista, 1842 - SP", icon: MapPin },
-  { key: "contact_hours", label: "Horário de atendimento", placeholder: "Seg-Sex 9h-19h", icon: Clock },
+  { key: "social_instagram", label: "Instagram", placeholder: "https://instagram.com/sua-conta", icon: Instagram },
+  { key: "social_facebook", label: "Facebook", placeholder: "https://facebook.com/sua-pagina", icon: Facebook },
+  { key: "social_linkedin", label: "LinkedIn", placeholder: "https://linkedin.com/company/sua-empresa", icon: Linkedin },
+  { key: "social_youtube", label: "YouTube", placeholder: "https://youtube.com/@seu-canal", icon: Youtube },
+  { key: "social_tiktok", label: "TikTok", placeholder: "https://tiktok.com/@seu-perfil", icon: Music },
 ];
 
-export function SiteContactsEditor({ initial }: Props) {
+export function SiteSocialEditor({ initial }: Props) {
   const [values, setValues] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -44,14 +41,17 @@ export function SiteContactsEditor({ initial }: Props) {
     setBusy(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/gestor/site-contacts", {
+      const res = await fetch("/api/gestor/site-appearance", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Falha ao salvar");
-      setStatus({ ok: true, msg: "Contatos salvos · aparecem em todas as páginas publicadas imediatamente." });
+      setStatus({
+        ok: true,
+        msg: "Redes sociais salvas · ícones aparecem no footer de todas as páginas.",
+      });
     } catch (err) {
       setStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro" });
     } finally {
@@ -61,11 +61,11 @@ export function SiteContactsEditor({ initial }: Props) {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h3 className="font-semibold text-gray-900">Contatos do site</h3>
+          <h3 className="font-semibold text-gray-900">Redes sociais</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Estes valores substituem os contatos que o Stitch gerou. Aplicam-se a TODAS as páginas e ao footer.
+            Deixe em branco as redes que você não usa. Os ícones aparecem no footer do site.
           </p>
         </div>
         <button
@@ -74,7 +74,7 @@ export function SiteContactsEditor({ initial }: Props) {
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-          Salvar
+          Salvar redes
         </button>
       </div>
 
@@ -88,7 +88,7 @@ export function SiteContactsEditor({ initial }: Props) {
                 {f.label}
               </label>
               <input
-                type={f.type ?? "text"}
+                type="url"
                 value={values[f.key]}
                 onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
                 placeholder={f.placeholder}

@@ -6,6 +6,8 @@ import { StitchPageView } from "@/components/stitch/stitch-page-view";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
+import { applySiteImages } from "@/lib/stitch/apply-site-images";
+import { applySocialLinks } from "@/lib/stitch/apply-social-links";
 import { injectChromeFromHome } from "@/lib/stitch/inject-chrome-from-home";
 import { injectFormHandler } from "@/lib/stitch/inject-form-handler";
 import { injectHeroOverlay } from "@/lib/stitch/inject-hero-overlay";
@@ -57,5 +59,7 @@ export default async function StitchCustomPage({ params }: Props) {
   finalHtml = injectHeroOverlay(finalHtml);
   finalHtml = injectFormHandler(finalHtml);
   finalHtml = await applyCurrentContacts(finalHtml);
+  finalHtml = await applySiteImages(finalHtml);
+  finalHtml = await applySocialLinks(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

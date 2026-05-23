@@ -6,6 +6,8 @@ import {
 import { applyActiveMenu } from "./apply-active-menu";
 import { applyCurrentContacts } from "./apply-current-contacts";
 import { applyMenuLabels } from "./apply-menu-labels";
+import { applySiteImages } from "./apply-site-images";
+import { applySocialLinks } from "./apply-social-links";
 import { injectFormHandler } from "./inject-form-handler";
 import { injectHeroOverlay } from "./inject-hero-overlay";
 import { getStitchMenuItems } from "./menu-items";
@@ -34,5 +36,7 @@ export async function tryRenderStitchPublicPage(pageType: RequiredPageType) {
   finalHtml = injectHeroOverlay(finalHtml);
   finalHtml = injectFormHandler(finalHtml);
   finalHtml = await applyCurrentContacts(finalHtml);
+  finalHtml = await applySiteImages(finalHtml);
+  finalHtml = await applySocialLinks(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

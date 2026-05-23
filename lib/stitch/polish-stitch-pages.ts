@@ -24,6 +24,7 @@ import { applyMenuLabels } from "./apply-menu-labels";
 import { injectClientLogo } from "./inject-logo";
 import { injectFormHandler } from "./inject-form-handler";
 import { injectHeroOverlay } from "./inject-hero-overlay";
+import { markContacts } from "./mark-contacts";
 import type { StitchMenuItem } from "./menu-items";
 import { normalizeStitchForms } from "./normalize-forms";
 import { replaceFakeContacts } from "./replace-contacts";
@@ -98,6 +99,12 @@ export function polishStitchPages(
   // 4) contatos fake → reais
   for (const t of REQUIRED_PAGE_TYPES) {
     if (polished[t]) polished[t] = replaceFakeContacts(polished[t]!, opts.answers);
+  }
+
+  // 4.5) marca pontos de contato com data-cdw-contact (substituição cirúrgica
+  // no render quando gestor edita /gestor/aparencia)
+  for (const t of REQUIRED_PAGE_TYPES) {
+    if (polished[t]) polished[t] = markContacts(polished[t]!, opts.answers);
   }
 
   // 5) forms → POST /api/contact

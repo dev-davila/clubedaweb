@@ -1,68 +1,57 @@
 import type { WizardAnswers } from "@/lib/wizard/types";
 
 /**
- * Stitch inventa contatos plausíveis (telefones, emails, links wa.me) mesmo
- * quando o briefing tem os reais. Esta função reescreve todos os pontos de
- * contato fake do HTML pelos valores do briefing, mantendo o restante do
- * conteúdo intacto.
+ * Substitui contatos no HTML por idempotência: se o match já tem o valor
+ * "real" (igual ao do briefing), preserva; senão, substitui.
+ *
+ * Esta função roda DEPOIS de markContacts no publish, e como fallback no
+ * render quando o HTML não tem marcadores. Pra cobertura completa, a fonte
+ * primária de verdade é o data-cdw-contact (vide apply-current-contacts.ts).
  */
 export function replaceFakeContacts(html: string, answers: WizardAnswers): string {
   let out = html;
 
-  // Telefone — substitui tel:XXX e qualquer ocorrência textual de telefone
-  // brasileiro formatado. Idempotência: se o número já bate (mesmos dígitos
-  // que o novo), preserva o match. Caso contrário, troca pelo formato canônico.
+  // ------------- Telefone -------------
   const phone = answers.contactPhone?.trim();
   if (phone) {
     const newDigits = phone.replace(/\D/g, "");
     if (newDigits.length >= 8) {
-      // tel:XXXX
       out = out.replace(/href=(["'])tel:[^"']*\1/gi, `href=$1tel:${newDigits}$1`);
-      // Texto puro: 10 ou 11 dígitos formatados em (DD) NNNNN-NNNN ou variantes.
-      // Limites \b ajudam a evitar pegar dígitos de meio de string maior.
       const phoneRe = /(?<!\d)\(?(\d{2})\)?[\s.-]?(9?\d{4})[\s.-]?(\d{4})(?!\d)/g;
       out = out.replace(phoneRe, (match) => {
         const matchDigits = match.replace(/\D/g, "");
-        // Idempotência: dígitos batem exato com o novo telefone → preserva
         if (matchDigits === newDigits) return match;
-        // Dígitos diferentes → substitui pela formatação que o user usou
         return phone;
       });
     }
   }
 
-  // Email — substitui só emails com domínio claramente "inventado" pelo
-  // Stitch (que casa com a empresa: vitalissaude.com.br, contato.NOMEEMPRESA…).
-  // NÃO substitui emails que sejam claramente reais e diferentes (ex: provedor
-  // grande tipo @gmail.com, @outlook.com, ou domínio do próprio user).
+  // ------------- Email -------------
+  // Idempotência por STRING completa (email todo, não só domínio). Substitui
+  // qualquer email que NÃO seja igual ao desejado E que NÃO seja claramente
+  // um email pessoal de terceiro (gmail/outlook etc) que o Stitch usou pra
+  // testimonials. Diferente da v1: não preserva email do mesmo dominio.
   const email = answers.contactEmail?.trim();
   if (email) {
-    const realDomain = email.split("@")[1]?.toLowerCase() ?? "";
     out = out.replace(/href=(["'])mailto:[^"']*\1/gi, `href=$1mailto:${email}$1`);
-    // Detecta domínios inventados pelo Stitch — gera versão "slug" do nome da
-    // empresa pra comparar.
-    const company = answers.companyName?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
+    const personalProviders = /(@gmail\.|@outlook\.|@hotmail\.|@yahoo\.|@icloud\.|@protonmail\.|@live\.|@uol\.|@terra\.|@bol\.|@globo\.|@ig\.)/i;
     out = out.replace(
-      /\b[a-z0-9._%+-]+@([a-z0-9.-]+\.[a-z]{2,})\b/gi,
-      (match, domain: string) => {
-        const d = domain.toLowerCase();
-        // Mantém emails reais (provedor grande, domínio do próprio user, mesmo email)
-        if (d === realDomain) return match;
-        if (/(gmail|outlook|hotmail|yahoo|icloud|protonmail|live|uol|terra|bol|globo|ig)\./i.test(d)) return match;
-        // Substitui só se o domínio claramente inventou o nome da empresa
-        const dCore = d.replace(/\.(com|com\.br|net|net\.br|org|org\.br|io|app|tech|saude)$/i, "").replace(/[^a-z0-9]/g, "");
-        if (company && (dCore.includes(company.slice(0, 6)) || company.includes(dCore))) return email;
-        // Domínio desconhecido — preserva
-        return match;
+      /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g,
+      (match) => {
+        if (match.toLowerCase() === email.toLowerCase()) return match; // já é o desejado
+        if (personalProviders.test(match)) return match; // email pessoal de terceiro — preserva
+        return email; // qualquer outro caso → substitui pelo email do briefing/admin
       },
     );
   }
 
-  // WhatsApp — formata wa.me
+  // ------------- WhatsApp -------------
+  // Reescreve wa.me/whatsapp.com/send + número textual (regex igual telefone
+  // mas com filtro pelos dígitos do whatsapp pra não conflitar com phone).
   const whatsappRaw = answers.contactWhatsapp?.trim();
   if (whatsappRaw) {
     let wa = whatsappRaw.replace(/\D/g, "");
-    if (wa.length === 10 || wa.length === 11) wa = `55${wa}`; // BR sem DDI
+    if (wa.length === 10 || wa.length === 11) wa = `55${wa}`;
     out = out.replace(
       /href=(["'])https?:\/\/(api\.)?wa\.me\/[^"']*\1/gi,
       `href=$1https://wa.me/${wa}$1`,
@@ -73,31 +62,37 @@ export function replaceFakeContacts(html: string, answers: WizardAnswers): strin
     );
   }
 
-  // Endereço — quando aparece "Av. ..." gerada pelo Stitch, substitui pelo real
+  // ------------- Endereço -------------
+  // Só pega <address>: substitui SEMPRE pelo novo valor (idempotente —
+  // se já era o real, escrever o mesmo valor não muda nada).
   const address = answers.contactAddress?.trim();
   if (address) {
-    // Substitui só se aparece "Av.", "Rua", "Alameda" + nº — heurística cuidadosa
-    // pra não destruir endereço real igual ou parecido.
     out = out.replace(
-      /<address[^>]*>([\s\S]{0,300}?)<\/address>/gi,
-      (match, inner) =>
-        inner.toLowerCase().includes(address.slice(0, 15).toLowerCase())
-          ? match
-          : `<address>${escapeHtml(address)}</address>`,
+      /<address\b([^>]*)>[\s\S]{0,500}?<\/address>/gi,
+      (_match, attrs: string) => `<address${attrs}>${escapeHtml(address)}</address>`,
     );
   }
 
-  // Nome da empresa — substitui variações estranhas que o Stitch inventa
-  // (ex.: "VITALITY" no lugar de "Vitalis Saúde Integrativa") em title, brand
-  // do header e qualquer span/h1/h2 que seja claramente a marca.
+  // ------------- Hours -------------
+  // Sem regex confiável (texto livre demais). Hours só funciona via marker
+  // (vide apply-current-contacts.ts). Aqui é no-op.
+
+  // ------------- Nome da empresa -------------
   const companyName = answers.companyName?.trim();
   if (companyName) {
-    // Gera variações comuns que Stitch encurta — primeira palavra ou nickname
+    const norm = (s: string) =>
+      s
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase();
+    const companyNorm = norm(companyName);
+
+    // Variantes que o Stitch costuma inventar — primeira palavra em CAPS
     const firstWord = companyName.split(/\s+/)[0];
     const variants = new Set<string>();
     if (firstWord.length >= 4) {
       variants.add(firstWord.toUpperCase());
-      // Variações tipo "VITALITY" (sufixo Y ao 1º nome "VITAL")
+      variants.add(norm(firstWord).toUpperCase());
       if (firstWord.length >= 5) {
         const stem = firstWord.slice(0, firstWord.length - 1);
         variants.add(stem.toUpperCase() + "Y");
@@ -105,18 +100,17 @@ export function replaceFakeContacts(html: string, answers: WizardAnswers): strin
       }
     }
     for (const v of variants) {
-      if (v === companyName.toUpperCase()) continue;
-      // Substitui só quando é a marca isolada (entre tags)
-      const re = new RegExp(`>\\s*${v}\\s*<`, "g");
+      if (norm(v) === companyNorm) continue;
+      // Substitui quando é a marca isolada entre tags (>VARIANTE<)
+      const re = new RegExp(`>\\s*${escapeRegex(v)}\\s*<`, "g");
       out = out.replace(re, `>${escapeHtml(companyName)}<`);
     }
+    // <title>: sempre atualiza pra garantir nome certo no head (idempotente).
     out = out.replace(
       /<title>([^<]*)<\/title>/i,
-      (match, inner) => {
-        const tail = inner.split("|").pop()?.trim() ?? "Home";
-        return inner.toLowerCase().includes(companyName.toLowerCase())
-          ? match
-          : `<title>${escapeHtml(companyName)} | ${tail}</title>`;
+      (_match, inner: string) => {
+        const tail = inner.includes("|") ? inner.split("|").slice(1).join("|").trim() : "Home";
+        return `<title>${escapeHtml(companyName)} | ${tail}</title>`;
       },
     );
   }
@@ -130,4 +124,8 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

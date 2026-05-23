@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import { StitchMenuEditor } from "@/components/gestor/stitch-menu-editor";
-import { StitchSiteSummary } from "@/components/gestor/stitch-site-summary";
 import { getStitchMenuItems } from "@/lib/stitch/menu-items";
 import {
   isStitchSitePublished,
@@ -34,12 +33,8 @@ export default async function MenusPage() {
         </p>
       </div>
 
-      <StitchSiteSummary context="menus" />
-
       {stitchPublished && (
-        <div className="mt-8">
-          <StitchMenuEditor initialItems={stitchItems} availablePages={availablePages} />
-        </div>
+        <StitchMenuEditor initialItems={stitchItems} availablePages={availablePages} />
       )}
     </div>
   );

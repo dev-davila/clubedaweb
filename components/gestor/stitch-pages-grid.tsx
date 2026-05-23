@@ -108,15 +108,16 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
               className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:border-emerald-400 transition group"
             >
               <div
-                className={`h-24 flex items-center justify-center text-center px-4 ${
+                className="h-24 flex items-center justify-center text-center px-4 border-b border-gray-100"
+                style={
                   isDark
-                    ? "bg-gradient-to-br from-zinc-900 to-zinc-800 text-white"
-                    : "bg-gradient-to-br from-gray-50 to-white text-gray-900 border-b border-gray-100"
-                }`}
+                    ? { background: "linear-gradient(135deg, #18181b 0%, #27272a 100%)", color: "#ffffff" }
+                    : { background: "linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)", color: "#111827" }
+                }
               >
                 <div>
-                  <div className="text-xs uppercase tracking-wider opacity-60 mb-1">{type}</div>
-                  <div className="text-base font-bold">{PAGE_LABEL[type]}</div>
+                  <div className="text-xs uppercase tracking-wider mb-1" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}>{type}</div>
+                  <div className="text-base font-bold" style={{ color: isDark ? "#ffffff" : "#111827" }}>{PAGE_LABEL[type]}</div>
                 </div>
               </div>
               <div className="p-3.5">
@@ -166,10 +167,13 @@ export async function StitchPagesGrid({ editable = false }: GridProps = {}) {
             key={p.slug}
             className="rounded-xl border border-emerald-200 bg-white overflow-hidden hover:border-emerald-500 transition group"
           >
-            <div className="h-24 flex items-center justify-center text-center px-4 bg-gradient-to-br from-emerald-50 to-white text-emerald-900 border-b border-emerald-100">
+            <div
+              className="h-24 flex items-center justify-center text-center px-4 border-b border-emerald-100"
+              style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%)", color: "#064e3b" }}
+            >
               <div>
-                <div className="text-xs uppercase tracking-wider opacity-60 mb-1">CUSTOM</div>
-                <div className="text-base font-bold">/{p.slug}</div>
+                <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "#059669" }}>CUSTOM</div>
+                <div className="text-base font-bold" style={{ color: "#064e3b" }}>/{p.slug}</div>
               </div>
             </div>
             <div className="p-3.5">

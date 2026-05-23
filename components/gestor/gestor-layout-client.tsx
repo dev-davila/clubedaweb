@@ -66,7 +66,7 @@ const menuItems: MenuItem[] = [
   { label: "Páginas", href: "/gestor/paginas", icon: FileText, roles: ["admin"] },
   { label: "Menus", href: "/gestor/menus", icon: MenuSquare, roles: ["admin"] },
   { label: "Configurar site (Wizard)", href: "/gestor/wizard", icon: Zap, roles: ["admin"] },
-  { label: "Temas", href: "/gestor/temas", icon: Layers, roles: ["admin"] },
+  // { label: "Temas", href: "/gestor/temas", icon: Layers, roles: ["admin"] },
   { label: "Aparência", href: "/gestor/aparencia", icon: PenTool, roles: ["admin"] },
   { label: "Editor visual", href: "/gestor/editor", icon: Cog, roles: ["admin"] },
   // Itens ocultos do wizard (mantidos no código, escondidos do menu) — descomente pra reativar

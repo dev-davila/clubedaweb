@@ -7,6 +7,7 @@ import { getPublishedStitchHtml } from "@/lib/stitch/published-pages";
 import { injectBlogPostsList } from "@/lib/stitch/inject-blog-posts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
+import { applyContrastFix } from "@/lib/stitch/apply-contrast-fix";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applySiteImages } from "@/lib/stitch/apply-site-images";
 import { applySocialLinks } from "@/lib/stitch/apply-social-links";
@@ -66,6 +67,7 @@ export default async function NoticiasPage({
     let final = await applyCurrentContacts(withPosts);
     final = await applySiteImages(final);
     final = await applySocialLinks(final);
+    final = applyContrastFix(final);
     return <StitchPageView html={final} fullViewport />;
   }
   // Fallback: usa template legado (Stitch não publicado ainda)

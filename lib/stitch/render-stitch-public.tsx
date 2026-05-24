@@ -4,6 +4,7 @@ import {
   type RequiredPageType,
 } from "@/lib/themes/required-pages";
 import { applyActiveMenu } from "./apply-active-menu";
+import { applyContrastFix } from "./apply-contrast-fix";
 import { applyCurrentContacts } from "./apply-current-contacts";
 import { applyMenuLabels } from "./apply-menu-labels";
 import { applySiteImages } from "./apply-site-images";
@@ -38,5 +39,6 @@ export async function tryRenderStitchPublicPage(pageType: RequiredPageType) {
   finalHtml = await applyCurrentContacts(finalHtml);
   finalHtml = await applySiteImages(finalHtml);
   finalHtml = await applySocialLinks(finalHtml);
+  finalHtml = applyContrastFix(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

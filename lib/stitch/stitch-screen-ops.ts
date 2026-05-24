@@ -202,8 +202,36 @@ export async function applyDesignSystemToScreens(
   if (screenIds.length === 0) return;
   const sdk = await loadSdk();
   const project = await resolveProject(sdk.stitch, projectId);
+
+  // Apply design system espera:
+  //  - id: id da SCREEN INSTANCE (NÃO o id do screen) — vem de project.data.screenInstances[]
+  //  - sourceScreen: resource name no formato `projects/{projectId}/screens/{screenId}`
+  // Buscamos o project data fresh pra pegar instances dos screens recém-gerados.
+  const projects = await sdk.stitch.projects();
+  const fullProject = projects.find((p) => p.id === projectId);
+  const screenInstances: Array<{ id?: string; sourceScreen?: string }> =
+    (fullProject?.data?.screenInstances as Array<{ id?: string; sourceScreen?: string }>) ?? [];
+
+  const instances: { id: string; sourceScreen: string }[] = [];
+  for (const screenId of screenIds) {
+    const expectedSource = `projects/${projectId}/screens/${screenId}`;
+    // Encontra instance cujo sourceScreen aponta pro screenId
+    const inst = screenInstances.find((si) => si.sourceScreen === expectedSource);
+    if (!inst?.id) {
+      logger.warn("[stitch] no screenInstance found for screen", {
+        screenId,
+        projectId,
+        availableInstances: screenInstances.length,
+      });
+      continue;
+    }
+    instances.push({ id: inst.id, sourceScreen: expectedSource });
+  }
+  if (instances.length === 0) {
+    logger.warn("[stitch] applyDesignSystem skipped — no resolvable instances");
+    return;
+  }
   const ds = project.designSystem(designSystemId);
-  const instances = screenIds.map((id) => ({ id, sourceScreen: id }));
   await withStitchRetry("applyDesignSystem", () => ds.apply(instances));
 }
 

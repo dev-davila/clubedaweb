@@ -61,47 +61,80 @@ function luminance(hex: string): number {
 }
 
 /**
- * Overrides CSS pra forçar contraste legível em paleta LIGHT.
- * As classes vêm do tailwind-config do Stitch e são frequentemente brancas
- * mesmo quando o body é light — esse override garante texto escuro.
- *
- * Pra paleta DARK não fazemos nada (assume o Stitch acerta lá).
+ * Overrides CSS pra contraste em paleta LIGHT. Conservador — só ataca
+ * casos onde a class do tailwind-config gerado é a MESMA cor do bg
+ * (material icons com text-surface no bg surface, por exemplo). NÃO
+ * sobrescreve text-on-surface global porque footers dark legítimos
+ * usam essa mesma classe (com bg dark) e ficariam invisíveis.
  */
 function lightModeOverrides(): string {
   return `
-.text-on-surface, .text-on-background { color: #111827 !important; }
-.text-on-surface-variant { color: #4b5563 !important; }
-.text-surface, .text-background { color: #111827 !important; }
-.text-on-primary-fixed-variant { color: #1f2937 !important; }
-.text-on-secondary-fixed-variant { color: #1f2937 !important; }
-.text-on-tertiary-fixed-variant { color: #1f2937 !important; }
-/* Material symbols com text-surface (que costuma ser igual ao bg → invisível) */
+/* Material symbols com text-surface — text = bg = invisível */
 .material-symbols-outlined.text-surface,
-.material-symbols-outlined.text-on-surface-variant { color: #6b7280 !important; }
-/* Hero/cards com bg-transparent ou bg-white/X com text-white aninhado:
-   Stitch coloca text-white em CTAs over heroes mas quando o hero não tem
-   bg-image, fica branco em branco. Força gray-900 pra elementos visíveis
-   em superfícies claras. */
-.bg-transparent .text-white,
-[class*="bg-surface"] .text-white:not([class*="bg-primary"]):not([class*="bg-zinc-9"]):not([class*="bg-slate-9"]):not([class*="bg-gray-9"]) {
-  color: #111827 !important;
+.material-symbols-outlined.text-background {
+  color: #6b7280 !important;
+}
+/* Icon containers com bg-primary/0.05 ou similar + text-on-X muito leve */
+[class*="bg-primary/0"] .material-symbols-outlined,
+[class*="bg-tertiary/0"] .material-symbols-outlined,
+[class*="bg-secondary/0"] .material-symbols-outlined {
+  color: #0b1c30 !important;
+}
+/* Botões outline em surfaces light com text-white declarado (sem bg dark
+   ancestor) ficam invisíveis. Só ataca quando o pai não tem bg dark. */
+section:not([data-cdw-hero-overlay="1"]):not([class*="bg-primary"]):not([class*="bg-zinc-9"]):not([class*="bg-slate-9"]):not([class*="bg-gray-9"]):not([class*="bg-black"]):not([class*="bg-on-"]) > div > a[class*="bg-transparent"] {
+  color: #0b1c30 !important;
+  border-color: #0b1c30 !important;
 }
 `.trim();
 }
 
-export function applyContrastFix(html: string): string {
-  // Idempotência
-  if (html.includes(`id="${CONTRAST_STYLE_ID}"`)) return html;
+/**
+ * Remove marker hero-overlay quando não há bg-image real (heurística falhou no
+ * publish original — ex.: mockup com rounded-/shadow- foi confundido com bg).
+ * O marker força texto branco no hero, e isso fica invisível sobre body light.
+ */
+function revertStaleHeroOverlay(html: string): string {
+  if (!/data-cdw-hero-overlay=["']1["']/.test(html)) return html;
+  // Verifica se há imagem fullscreen (sem rounded/shadow/ring) dentro do hero
+  const heroMatch = html.match(
+    /<section\b[^>]*data-cdw-hero-overlay=["']1["'][^>]*>([\s\S]*?)<\/section>/i,
+  );
+  if (!heroMatch) return html;
+  const inner = heroMatch[1];
+  const bgImg = inner.match(
+    /<div\s+class=["'][^"']*\babsolute\b[^"']*\binset-0\b[^"']*["'][^>]*>[\s\S]{0,400}?<img\b[^>]*\bclass=["']([^"']+)["']/i,
+  );
+  const imgCls = bgImg?.[1] ?? "";
+  const isRealBg =
+    bgImg &&
+    !/\b(rounded-|shadow-|ring-)/i.test(imgCls) &&
+    /object-cover/i.test(imgCls) &&
+    /w-full/i.test(imgCls) &&
+    /h-full/i.test(imgCls);
+  if (isRealBg) return html;
+  // Não é bg real → remove o marker (CSS deixa de aplicar)
+  return html.replace(
+    /(<section\b[^>]*)\s+data-cdw-hero-overlay=["']1["']/i,
+    "$1",
+  );
+}
 
-  const palette = detectPalette(html);
-  if (palette.mode === "dark") return html; // tema dark — Stitch geralmente acerta
+export function applyContrastFix(html: string): string {
+  // 1) Reverte hero-overlay aplicado erroneamente em mockups
+  let out = revertStaleHeroOverlay(html);
+
+  // 2) Injeta CSS de contraste se body é light
+  if (out.includes(`id="${CONTRAST_STYLE_ID}"`)) return out;
+
+  const palette = detectPalette(out);
+  if (palette.mode === "dark") return out;
 
   const css = lightModeOverrides();
   const styleTag = `<style id="${CONTRAST_STYLE_ID}">${css}</style>`;
 
-  // Injeta depois do </style> existente ou antes de </head>
-  if (/<\/head>/i.test(html)) {
-    return html.replace(/<\/head>/i, `${styleTag}\n</head>`);
+  if (/<\/head>/i.test(out)) {
+    return out.replace(/<\/head>/i, `${styleTag}\n</head>`);
   }
-  return html.replace(/<body/i, `${styleTag}\n<body`);
+  return out.replace(/<body/i, `${styleTag}\n<body`);
 }

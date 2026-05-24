@@ -70,9 +70,22 @@ export function injectHeroOverlay(html: string): string {
   // Já tem overlay? skip
   if (/data-cdw-hero-overlay/.test(before + after)) return html;
 
-  // Hero tem <img> com inset-0/absolute fullscreen como background?
-  const hasBgImage = /<div\s+class=["'][^"']*\babsolute\b[^"']*\binset-0\b[^"']*["'][^>]*>[\s\S]{0,400}?<img\b/i.test(inner);
-  if (!hasBgImage) return html;
+  // Hero tem <img> fullscreen como background?
+  // Padrão típico: <div class="absolute inset-0"><img class="w-full h-full object-cover ...">
+  // Heurística pra distinguir bg image vs card visual (mockup ao lado do texto):
+  //  - Card visual quase sempre tem rounded-/shadow-/ring- na <img>
+  //  - Bg fullscreen geralmente é "edge to edge" sem cantos arredondados
+  const bgPatternMatch = inner.match(
+    /<div\s+class=["'][^"']*\babsolute\b[^"']*\binset-0\b[^"']*["'][^>]*>[\s\S]{0,400}?<img\b[^>]*\bclass=["']([^"']+)["']/i,
+  );
+  if (!bgPatternMatch) return html;
+  const imgClasses = bgPatternMatch[1] ?? "";
+  // Se a img tem rounded/shadow/ring → é card visual, NÃO bg full screen
+  if (/\b(rounded-|shadow-|ring-)/i.test(imgClasses)) return html;
+  // Se a img NÃO tem object-cover w-full h-full → também não é bg full
+  if (!/object-cover/i.test(imgClasses) || !/w-full/i.test(imgClasses) || !/h-full/i.test(imgClasses)) {
+    return html;
+  }
 
   // Marca section e injeta style global
   const newSection = `<section${before} data-block="hero" data-cdw-hero-overlay="1"${after}>${inner}</section>`;

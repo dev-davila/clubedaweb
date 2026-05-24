@@ -745,14 +745,21 @@ export function validateStitchPageHtml(
 ): StitchHtmlValidation {
   const missingBlocks: string[] = [];
   const required = STANDARD_PAGE_BLOCKS[pageType];
+  // features-grid: aceita ≥3 feature-cards mesmo sem wrapper data-block — Stitch
+  // costuma esquecer o atributo no container, mas gera os cards corretamente.
+  const featureCardCount = (html.match(/data-block=["']feature-card["']/gi) ?? []).length;
   for (const block of required) {
+    if (block === "features-grid") {
+      const hasGrid = /data-block=["']features-grid["']/i.test(html);
+      const hasEnoughCards = featureCardCount >= 3;
+      if (!hasGrid && !hasEnoughCards) missingBlocks.push("features-grid");
+      continue;
+    }
     const re = new RegExp(`data-block=["']${block}["']`, "i");
     if (!re.test(html)) missingBlocks.push(block);
   }
-  let featureCardCount = 0;
-  if (required.includes("features-grid")) {
-    featureCardCount = (html.match(/data-block=["']feature-card["']/gi) ?? []).length;
-    if (featureCardCount < 3) missingBlocks.push("feature-card×3");
+  if (required.includes("features-grid") && featureCardCount < 3) {
+    missingBlocks.push("feature-card×3");
   }
   return {
     ok: missingBlocks.length === 0,

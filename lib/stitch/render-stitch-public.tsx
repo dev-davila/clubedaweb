@@ -5,6 +5,7 @@ import {
 } from "@/lib/themes/required-pages";
 import { applyActiveMenu } from "./apply-active-menu";
 import { applyContrastFix } from "./apply-contrast-fix";
+import { applyDynamicYear } from "./apply-dynamic-year";
 import { applyCurrentContacts } from "./apply-current-contacts";
 import { applyMenuLabels } from "./apply-menu-labels";
 import { applySiteImages } from "./apply-site-images";
@@ -40,5 +41,6 @@ export async function tryRenderStitchPublicPage(pageType: RequiredPageType) {
   finalHtml = await applySiteImages(finalHtml);
   finalHtml = await applySocialLinks(finalHtml);
   finalHtml = applyContrastFix(finalHtml);
+  finalHtml = applyDynamicYear(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

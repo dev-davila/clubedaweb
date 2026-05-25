@@ -701,8 +701,12 @@ export function validateStitchPageFunctional(
   if (pageType === "contact" && !/<form[\s>]/i.test(html)) {
     extra.push("contact-form");
   }
-  if (pageType === "blog" && (html.match(/<article/gi) ?? []).length < 3) {
-    extra.push("blog-articles×3");
+  // Blog: aceita ≥1 article. Os cards reais de post são injetados depois por
+  // injectBlogPostsList (a partir do BlogPost do banco), então não precisamos
+  // exigir 3 articles já no HTML cru do Stitch — exigir isso travava o pipeline
+  // em retry quando o Stitch gerava um layout de blog diferente.
+  if (pageType === "blog" && (html.match(/<article/gi) ?? []).length < 1) {
+    extra.push("blog-article×1");
   }
 
   return {

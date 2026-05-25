@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { StitchPageView } from "@/components/stitch/stitch-page-view";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { applyContrastFix } from "@/lib/stitch/apply-contrast-fix";
+import { applyDynamicYear } from "@/lib/stitch/apply-dynamic-year";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { applySiteImages } from "@/lib/stitch/apply-site-images";
@@ -63,5 +64,6 @@ export default async function StitchCustomPage({ params }: Props) {
   finalHtml = await applySiteImages(finalHtml);
   finalHtml = await applySocialLinks(finalHtml);
   finalHtml = applyContrastFix(finalHtml);
+  finalHtml = applyDynamicYear(finalHtml);
   return <StitchPageView html={finalHtml} fullViewport />;
 }

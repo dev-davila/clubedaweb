@@ -8,6 +8,7 @@ import { injectBlogPostsList } from "@/lib/stitch/inject-blog-posts";
 import { applyMenuLabels } from "@/lib/stitch/apply-menu-labels";
 import { applyActiveMenu } from "@/lib/stitch/apply-active-menu";
 import { applyContrastFix } from "@/lib/stitch/apply-contrast-fix";
+import { applyDynamicYear } from "@/lib/stitch/apply-dynamic-year";
 import { applyCurrentContacts } from "@/lib/stitch/apply-current-contacts";
 import { applySiteImages } from "@/lib/stitch/apply-site-images";
 import { applySocialLinks } from "@/lib/stitch/apply-social-links";
@@ -68,6 +69,7 @@ export default async function NoticiasPage({
     final = await applySiteImages(final);
     final = await applySocialLinks(final);
     final = applyContrastFix(final);
+    final = applyDynamicYear(final);
     return <StitchPageView html={final} fullViewport />;
   }
   // Fallback: usa template legado (Stitch não publicado ainda)

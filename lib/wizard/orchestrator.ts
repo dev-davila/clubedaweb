@@ -58,6 +58,7 @@ import {
   transition,
 } from "./state-machine";
 import { runDiscoveryTurn, computeBriefProgress } from "./discovery-agent";
+import { classifyPageIntent } from "./classify-page-intent";
 import type { ChatMessage, WizardSnapshot } from "./types";
 
 const PREVIEW_TTL_MS = 24 * 60 * 60 * 1000;
@@ -232,7 +233,32 @@ export async function advance(input: AdvanceInput): Promise<AdvanceOutput> {
   await ensureGreeting(session.id);
 
   let snapshot = snapshotFromRow(session);
-  const outcome = transition({ snapshot, message: input.message, origin: input.origin });
+
+  // Em estados de decisão sobre páginas (review_page / ready_to_publish), o
+  // usuário responde em linguagem natural ("ficou show, manda a próxima"). A
+  // state-machine só entende tokens via regex, então classificamos a intenção
+  // por IA e normalizamos a mensagem pro token canônico que as regex casam.
+  // Degrada com segurança: action "unknown" mantém a mensagem original.
+  let effectiveMessage = input.message;
+  if (snapshot.state === "review_page" || snapshot.state === "ready_to_publish") {
+    const intent = await classifyPageIntent(input.message, {
+      pageType: snapshot.currentPage ?? undefined,
+    });
+    const canonical: Record<string, string | null> = {
+      approve: "aprovar",
+      regenerate: "outra versão",
+      variant: "variante",
+      cancel: "cancelar",
+      publish: "publicar",
+      adjust: null, // mantém texto original (é o feedback de ajuste)
+      unknown: null, // mantém texto original (cai no regex atual)
+    };
+    const mapped = canonical[intent.action];
+    if (mapped) effectiveMessage = mapped;
+    else if (intent.action === "adjust" && intent.feedback) effectiveMessage = intent.feedback;
+  }
+
+  const outcome = transition({ snapshot, message: effectiveMessage, origin: input.origin });
 
   let assistantReply = outcome.reply;
   let nextSnapshot: WizardSnapshot = outcome.next;

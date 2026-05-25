@@ -7,7 +7,7 @@ import {
 } from "./prompts";
 import { discoveryGreeting } from "./discovery-agent";
 import { resolveRegenerationMode } from "./regeneration-mode";
-import { allPagesApproved, firstWizardPage, nextPageAfter } from "./page-flow";
+import { allPagesApproved, firstWizardPage, nextPageAfter, pageProgressLabel } from "./page-flow";
 import type { RequiredPageType } from "@/lib/themes/required-pages";
 import type {
   TransitionOutcome,
@@ -101,9 +101,12 @@ export function transition({ snapshot, message, origin }: TransitionInput): Tran
     }
 
     case "generating_page": {
+      const label = snapshot.currentPage
+        ? pageProgressLabel(snapshot.currentPage)
+        : "a página";
       return {
         next: snapshot,
-        reply: `Ainda gerando **${snapshot.currentPage ?? "a página"}**… aguarde.`,
+        reply: `⏳ Gerando **${label}**… cada página leva ~1-3 min. Já te aviso quando ficar pronta.`,
         sideEffect: { kind: "none" },
       };
     }

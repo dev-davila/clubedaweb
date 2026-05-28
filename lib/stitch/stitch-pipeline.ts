@@ -161,8 +161,12 @@ export async function runStitchPagePipeline(
 
     let html = last.html;
     if (pageType === "home" && html.trim() && mode === "generate") {
-      setChromeSourceFromHome(sanitizeStitchHtml(html));
-      homeChromeSet = true;
+      try {
+        setChromeSourceFromHome(sanitizeStitchHtml(html));
+        homeChromeSet = true;
+      } catch (err) {
+        logger.warn("[stitch:pipeline] setChromeSourceFromHome failed, retrying", { err: String(err) });
+      }
     } else if (homeChromeSet) {
       html = sanitizeStitchHtml(html, {
         pageType,

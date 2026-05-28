@@ -1,0 +1,22 @@
+# Vars não-secretas do site antivirusavira.com.br.
+# (Segredos ficam em deploy/secrets-avira.yml, fora do git.)
+
+app_name: avira
+app_user: avira
+app_group: avira
+app_home: /home/avira
+app_dir: /home/avira/clubedaweb
+
+# Mesmo repo do clubedaweb (mesma codebase, instância separada).
+# Deploy key gerada por 01-deploykey.yml é adicionada como mais uma
+# Deploy key no repo dev-davila/clubedaweb (GitHub aceita várias).
+app_repo: git@github.com:dev-davila/clubedaweb.git
+app_branch: main
+
+# 3000=solutions-center, 3001=sentra, 3002=clubedaweb, 3003=avast, 3004=avira
+app_port: 3004
+app_domain: antivirusavira.com.br
+
+# Banco dedicado (Postgres local, role/DB próprios)
+db_name: avira
+db_user: avira

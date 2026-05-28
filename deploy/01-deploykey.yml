@@ -1,0 +1,56 @@
+---
+# FASE 1 — Gera a deploy key do site no servidor (no usuário Linux do site) e
+# imprime a chave pública. Você adiciona essa chave no GitHub: repo do app
+# → Settings → Deploy keys → Add deploy key (pode deixar read-only).
+#
+# Uso:
+#   ansible-playbook 01-deploykey.yml                     # default: site=clubedaweb
+#   ansible-playbook 01-deploykey.yml -e site=avast
+- name: "{{ site | default('clubedaweb') }} :: bootstrap deploy key"
+  hosts: m3
+  become: true
+  gather_facts: false
+  vars_files:
+    - "sites/{{ site | default('clubedaweb') }}.yml"
+  tasks:
+    - name: Garantir pacote acl (necessário p/ Ansible trocar root->m3site)
+      ansible.builtin.apt:
+        name: acl
+        state: present
+        update_cache: false
+
+    - name: Garantir usuário m3site
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Garantir ~/.ssh do m3site
+      ansible.builtin.file:
+        path: "{{ app_home }}/.ssh"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0700"
+
+    - name: Gerar deploy key ed25519 (se não existir)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: ssh-keygen -t ed25519 -N "" -f {{ app_home }}/.ssh/id_ed25519 -C "{{ app_name }}-deploy@m3"
+        creates: "{{ app_home }}/.ssh/id_ed25519"
+
+    - name: Adicionar github.com ao known_hosts do m3site
+      become_user: "{{ app_user }}"
+      ansible.builtin.shell:
+        cmd: ssh-keyscan -t ed25519,rsa github.com >> {{ app_home }}/.ssh/known_hosts
+        creates: "{{ app_home }}/.ssh/known_hosts"
+
+    - name: Ler a chave pública
+      ansible.builtin.slurp:
+        src: "{{ app_home }}/.ssh/id_ed25519.pub"
+      register: deploy_pubkey
+
+    - name: "👉 ADICIONE ESTA DEPLOY KEY NO GITHUB ({{ app_repo }} → Settings → Deploy keys)"
+      ansible.builtin.debug:
+        msg: "{{ deploy_pubkey.content | b64decode | trim }}"

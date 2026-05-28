@@ -1,0 +1,19 @@
+# Vars não-secretas do site clubedaweb.
+# (Segredos ficam em deploy/secrets-clubedaweb.yml, fora do git.)
+
+app_name: clubedaweb
+app_user: m3site
+app_group: m3site
+app_home: /home/m3site
+app_dir: /home/m3site/clubedaweb
+
+app_repo: git@github.com:dev-davila/clubedaweb.git
+app_branch: main
+
+# 3000=solutions-center, 3001=sentra, 3002=clubedaweb, 3003=avast
+app_port: 3002
+app_domain: m3site.clubedaweb.com.br
+
+# Banco dedicado (Postgres local)
+db_name: clubedaweb
+db_user: clubedaweb

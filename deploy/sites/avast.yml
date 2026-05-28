@@ -1,0 +1,22 @@
+# Vars não-secretas do site antivirusavast.com.br.
+# (Segredos ficam em deploy/secrets-avast.yml, fora do git.)
+
+app_name: avast
+app_user: avast
+app_group: avast
+app_home: /home/avast
+app_dir: /home/avast/clubedaweb
+
+# Mesmo repo do clubedaweb (mesma codebase, instância separada).
+# Adicione a deploy key gerada por 01-deploykey.yml como uma segunda Deploy key
+# no repo dev-davila/clubedaweb (GitHub aceita várias).
+app_repo: git@github.com:dev-davila/clubedaweb.git
+app_branch: main
+
+# 3000=solutions-center, 3001=sentra, 3002=clubedaweb, 3003=avast
+app_port: 3003
+app_domain: antivirusavast.com.br
+
+# Banco dedicado (Postgres local, role/DB próprios)
+db_name: avast
+db_user: avast

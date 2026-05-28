@@ -1,0 +1,14 @@
+# Vars COMUNS a todos os sites deployados neste servidor.
+# Vars específicas por site ficam em deploy/sites/<site>.yml e são carregadas
+# pelos playbooks via `vars_files` com `-e site=<nome>`.
+
+# Postgres local do servidor
+db_host: 127.0.0.1
+db_port: 5432
+
+# SSL
+certbot_email: douglas.avila@davilasolutions.com.br
+
+# Binários (já instalados no servidor)
+pm2_bin: /usr/bin/pm2
+node_bin: /usr/bin/node

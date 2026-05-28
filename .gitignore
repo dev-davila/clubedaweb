@@ -37,6 +37,12 @@ yarn-error.log*
 # Local tooling / outputs (não vão pro repo)
 .agents/
 .claude/
+
+# Ansible deploy — segredos NÃO vão pro repo (o resto do deploy/ vai)
+deploy/secrets.yml
+deploy/secrets-*.yml
+deploy/*.retry
+deploy/.deploy_key*
 _bmad/
 _bmad-output/
 tmp/

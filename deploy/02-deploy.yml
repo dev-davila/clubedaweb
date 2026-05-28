@@ -1,0 +1,196 @@
+---
+# FASE 2 — Deploy de um site (pm2, sem Docker), seguindo o padrão da casa.
+# Pré-requisitos: 01-deploykey.yml rodado + deploy key adicionada no GitHub + DNS apontando.
+#
+# Uso:
+#   ansible-playbook 02-deploy.yml                     # default: site=clubedaweb
+#   ansible-playbook 02-deploy.yml -e site=avast
+- name: "{{ site | default('clubedaweb') }} :: deploy"
+  hosts: m3
+  become: true
+  gather_facts: true
+  vars_files:
+    - "sites/{{ site | default('clubedaweb') }}.yml"
+    - "secrets-{{ site | default('clubedaweb') }}.yml"
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.command: nginx -s reload
+
+  tasks:
+    # ---------- Postgres (DB + usuário dedicados) ----------
+    - name: Criar role do banco (se não existir)
+      become_user: postgres
+      ansible.builtin.shell: |
+        psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ db_user }}'" | grep -q 1 \
+          || psql -c "CREATE ROLE \"{{ db_user }}\" LOGIN PASSWORD '{{ db_password }}'"
+      register: role_create
+      changed_when: "'CREATE ROLE' in role_create.stdout"
+      no_log: true
+
+    - name: Garantir senha/login da role
+      become_user: postgres
+      ansible.builtin.command: >-
+        psql -c "ALTER ROLE \"{{ db_user }}\" WITH LOGIN PASSWORD '{{ db_password }}'"
+      changed_when: false
+      no_log: true
+
+    - name: Criar database (se não existir)
+      become_user: postgres
+      ansible.builtin.shell: |
+        psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ db_name }}'" | grep -q 1 \
+          || psql -c "CREATE DATABASE \"{{ db_name }}\" OWNER \"{{ db_user }}\""
+      register: db_create
+      changed_when: "'CREATE DATABASE' in db_create.stdout"
+
+    # ---------- Código (git clone via deploy key) ----------
+    - name: Clonar/atualizar o repositório
+      become_user: "{{ app_user }}"
+      ansible.builtin.git:
+        repo: "{{ app_repo }}"
+        dest: "{{ app_dir }}"
+        version: "{{ app_branch }}"
+        accept_hostkey: true
+        key_file: "{{ app_home }}/.ssh/id_ed25519"
+        force: true
+
+    # ---------- .env de produção ----------
+    - name: Montar .env de produção
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ app_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0600"
+      no_log: true
+
+    # ---------- Dependências, migrations e build ----------
+    - name: Limpar node_modules e cache npm (evita ENOTEMPTY de instalações parciais)
+      ansible.builtin.shell: |
+        rm -rf {{ app_dir }}/node_modules
+        su - {{ app_user }} -c "npm cache clean --force"
+
+    - name: npm install (instala deps p/ o build)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        # legacy-peer-deps: lock tem conflito eslint-config-next x @typescript-eslint
+        cmd: npm install --legacy-peer-deps
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+
+    - name: Aplicar migrations do Prisma (migrate deploy)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: npx prisma migrate deploy
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+
+    - name: Build de produção (prisma generate && next build)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: npm run build
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+
+    # ---------- Seed inicial (opt-in) ----------
+    # Cria os 2 admins padrão (john@doe.com / johndoe123 e admin@m3solutions.com.br
+    # / M3Admin@2024) + parceiros + posts demo + categorias/autores. Usa upsert
+    # (idempotente) e safe-seed bloqueia deleções. Ative com `-e run_seed=true`.
+    # Também pode ser rodado isolado: `-e run_seed=true --tags seed`.
+    - name: Rodar seed inicial (admin users + dados base)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: npx prisma db seed
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+      when: run_seed | default(false) | bool
+      tags: [seed]
+
+    # ---------- pm2 ----------
+    - name: Estado atual do pm2
+      become_user: "{{ app_user }}"
+      ansible.builtin.command: "{{ pm2_bin }} jlist"
+      environment:
+        HOME: "{{ app_home }}"
+      register: pm2_jlist
+      changed_when: false
+
+    - name: pm2 start (primeira vez)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: "{{ pm2_bin }} start node_modules/.bin/next --name {{ app_name }} -- start -p {{ app_port }}"
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+      when: '"\"name\":\"" + app_name + "\"" not in pm2_jlist.stdout'
+
+    - name: pm2 reload (deploys seguintes)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command:
+        cmd: "{{ pm2_bin }} reload {{ app_name }} --update-env"
+        chdir: "{{ app_dir }}"
+      environment:
+        HOME: "{{ app_home }}"
+      when: '"\"name\":\"" + app_name + "\"" in pm2_jlist.stdout'
+
+    - name: pm2 save (persistir lista de processos)
+      become_user: "{{ app_user }}"
+      ansible.builtin.command: "{{ pm2_bin }} save"
+      environment:
+        HOME: "{{ app_home }}"
+      changed_when: false
+
+    - name: pm2 startup systemd para m3site (sobrevive reboot)
+      ansible.builtin.command:
+        cmd: "{{ pm2_bin }} startup systemd -u {{ app_user }} --hp {{ app_home }}"
+        creates: /etc/systemd/system/pm2-{{ app_user }}.service
+
+    # ---------- nginx ----------
+    - name: Checar se o vhost já existe
+      ansible.builtin.stat:
+        path: /etc/nginx/sites-available/{{ app_name }}
+      register: vhost
+
+    # Só cria na primeira vez — assim re-runs não apagam os ajustes de SSL do Certbot.
+    - name: Criar vhost nginx (HTTP) — apenas se ainda não existe
+      ansible.builtin.template:
+        src: nginx-clubedaweb.conf.j2
+        dest: /etc/nginx/sites-available/{{ app_name }}
+        owner: root
+        group: root
+        mode: "0644"
+      when: not vhost.stat.exists
+      notify: reload nginx
+
+    - name: Habilitar vhost (symlink em sites-enabled)
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/{{ app_name }}
+        dest: /etc/nginx/sites-enabled/{{ app_name }}
+        state: link
+      notify: reload nginx
+
+    - name: Testar config do nginx
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Aplicar reload pendente do nginx antes do Certbot
+      ansible.builtin.meta: flush_handlers
+
+    # ---------- SSL (Certbot) ----------
+    - name: Emitir certificado e configurar SSL (Certbot --nginx)
+      ansible.builtin.command:
+        cmd: >-
+          certbot --nginx -d {{ app_domain }} --non-interactive --agree-tos
+          -m {{ certbot_email }} --redirect
+        creates: /etc/letsencrypt/live/{{ app_domain }}/fullchain.pem
+      notify: reload nginx
+
+    - name: Resumo
+      ansible.builtin.debug:
+        msg:
+          - "clubedaweb no ar: https://{{ app_domain }}"
+          - "porta interna: {{ app_port }} | user: {{ app_user }} | dir: {{ app_dir }}"

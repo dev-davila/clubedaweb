@@ -86,10 +86,13 @@ export function polishStitchPages(
     const full = sanitized as Record<RequiredPageType, string>;
     const referenceKey = pickReferencePage(full, userMode);
     polished = standardizePageStyling(full, referenceKey) as Record<RequiredPageType, string>;
+    // Chrome (header/footer) sempre vem da home — é a página mais confiável pra isso.
+    // referenceKey é usado só pra styling (CSS/cores), não pra extração de chrome.
+    const chromeSource = full["home"]?.trim() ? "home" : referenceKey;
     try {
       polished = standardizeSiteChrome(
         polished as Record<RequiredPageType, string>,
-        referenceKey,
+        chromeSource,
       );
     } catch (err) {
       logger.warn("[polish] standardizeSiteChrome falhou: " + String(err));

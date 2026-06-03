@@ -89,10 +89,16 @@ function buildNavHtml(activePage: RequiredPageType): string {
 /** Header da home com nav ativa conforme a página. */
 export function buildStandardHeader(chrome: SiteChrome, activePage: RequiredPageType): string {
   let header = chrome.headerShell;
-  header = header.replace(
-    /<nav class="hidden md:flex[\s\S]*?<\/nav>/i,
+  // Regex robusto: match qualquer <nav> cujo atributo class contenha "hidden md:flex",
+  // independente da ordem dos atributos (Stitch às vezes coloca aria-label antes de class).
+  const navReplaced = header.replace(
+    /<nav\b[^>]*class="[^"]*hidden[^"]*md:flex[^"]*"[^>]*>[\s\S]*?<\/nav>/i,
     buildNavHtml(activePage),
   );
+  // Fallback: se o regex acima não encontrou, tenta o padrão original
+  header = navReplaced !== header
+    ? navReplaced
+    : header.replace(/<nav class="hidden md:flex[\s\S]*?<\/nav>/i, buildNavHtml(activePage));
   header = header.replace(/href="#contato"/g, `href="${SITE_PAGE_ROUTES.contact}"`);
   return header;
 }

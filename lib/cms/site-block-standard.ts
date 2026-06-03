@@ -230,11 +230,10 @@ export const STITCH_HOME_REQUIRED_DATA_BLOCKS: readonly string[] = [
 ];
 
 const STITCH_TECHNICAL_RULES = [
-  "Use APENAS Tailwind CSS via CDN (<script src=\"https://cdn.tailwindcss.com\"></script> no head).",
-  "NÃO use CSS variables customizadas; cores em classes da paleta PADRÃO Tailwind (slate, gray, stone, amber, orange, blue…).",
-  "NÃO invente cores inexistentes (beige-*, brown-*, brand-*). Para padaria use stone/amber/orange; para saúde emerald/teal; etc.",
+  "Tailwind CSS via CDN no head. Configure tailwind.config com as cores da paleta do cliente usando valores hex exatos.",
+  "CSS custom properties são PERMITIDAS e RECOMENDADAS para design tokens (--color-brand, --color-accent, etc.). Use para criar identidade visual única.",
+  "JavaScript inline é PERMITIDO para micro-interações que elevam qualidade: scroll reveal (IntersectionObserver), counter animado, sticky header com blur, tabs/accordion. Sem dependências externas — apenas JS vanilla.",
   "Mobile-first, responsivo (sm/md/lg), contraste WCAG AA.",
-  "Sem JavaScript. Animações só com transition Tailwind.",
   "HTML5 semântico: header, main, section, footer, h1–h3, p, a, article.",
   "Cada bloco DEVE ter o atributo data-block exatamente como no padrão (ex.: data-block=\"hero\").",
   "Home: ids de âncora hero#top, features-grid#servicos, cta#contato para o menu.",
@@ -242,15 +241,16 @@ const STITCH_TECHNICAL_RULES = [
 ];
 
 const STITCH_QUALITY_EXIGENCY = [
-  "**IMPACTANTE de primeira**: o cliente vai abrir o preview e ter que dizer 'uau, ficou demais'. Esse é o teste de qualidade.",
-  "**Hero forte**: H1 grande (text-5xl/6xl em desktop, leading-tight), com peso visual real. Subtítulo que respira (max-w-2xl). 2 CTAs com contraste claro entre primário/secundário.",
-  "**Não wireframe, não template SaaS genérico**: evite gradientes purple-to-blue, evite 'lorem ipsum corporativo' tipo 'soluções inovadoras para o seu negócio'. Use linguagem específica do segmento e do brief.",
-  "**Tipografia premium**: pelo menos 1 fonte da Google Fonts (Inter/Manrope/Fraunces/Playfair Display/DM Serif Display conforme o segmento). Hierarquia clara (display > h1 > h2 > body).",
-  "**Espaçamento generoso**: py-20 entre seções no desktop, py-12 mobile. Não amontoar. Whitespace é estilo.",
-  "**Imagens com peso**: usar imagens via picsum.photos OU emojis grandes OU SVG inline icons (Lucide-style com stroke 1.5). NUNCA placeholder cinza vazio.",
-  "**Cards com profundidade**: shadow-md base, hover:shadow-xl + hover:-translate-y-1 com transição. Border-radius consistente (rounded-xl ou rounded-2xl).",
-  "**Cores intencionais**: use a paleta sugerida do segmento. NÃO use Tailwind primary blue padrão (#3B82F6). Bg escuro no hero ou no CTA final pra criar contraste visual entre seções.",
-  "**Copy específica do brief**: NUNCA escreva texto genérico tipo 'A melhor empresa do mercado'. Use sempre dados/diferenciais reais que estão no direcionamento por bloco acima.",
+  "**NÍVEL AWWWARDS**: o critério de aceitação é 'parecer feito por um designer sênior de São Francisco/Amsterdam, não por uma ferramenta de IA'. Pense Vercel.com, Linear.app, Stripe.com, Resend.com.",
+  "**Fuja de clichês de IA**: PROIBIDO gradiente purple-to-blue genérico, cards iguais enfileirados com ícone+título+parágrafo, hero centralizado com imagem placeholder à direita. Esses padrões gritam 'gerado por IA'.",
+  "**Layout com personalidade**: use assimetria intencional, tipografia grande quebrando grid, sobreposição de elementos, seções com fundos alternados que criam ritmo visual. Inspire-se nos melhores sites do segmento.",
+  "**Hero que para**: H1 em display size (text-6xl/7xl/8xl desktop), com uma palavra ou frase em cor de destaque da paleta. Proporção e espaço negative como elemento de design. Subtítulo conciso. 2 CTAs.",
+  "**Tipografia expressiva**: combinar 2 fontes — uma display/serif para títulos (Fraunces, DM Serif Display, Playfair) + uma sans moderna para corpo (Inter, Manrope). Tamanhos com saltos dramáticos.",
+  "**Micro-interações com JS**: scroll reveal nas seções (IntersectionObserver), contadores animados para métricas, hover 3D-tilt em cards de destaque, sticky header que muda de aparência ao scrollar.",
+  "**Imagens reais e contextuais**: picsum.photos com query do segmento (ex: ?grayscale&blur=2 para tech dark), emojis intencionais como elementos gráficos, SVG inline com animação CSS, gradientes de cor reais com opacity.",
+  "**Hierarquia visual intencional**: 1 elemento gigante por seção que ancora o olhar. Depois os secundários. Nunca tudo no mesmo tamanho.",
+  "**Copy do brief, não de template**: H1 específico sobre a empresa. Métricas reais nos stats. Benefícios concretos nos cards. Textos que só servem pra ESSE cliente — teste: se funcionaria pra qualquer empresa, é genérico demais.",
+  "**Contraste entre seções**: alterne fundo claro/escuro ou use variações de tonalidade para criar profundidade. Nunca uma página toda no mesmo fundo.",
 ];
 
 function blockSpecLines(keys: readonly (CanonicalBlockKey | SiteChromeBlockKey)[]): string {

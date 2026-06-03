@@ -2,12 +2,12 @@ import type { WizardAnswers } from "@/lib/wizard/types";
 import { detectUserColorMode, pickTheme, themeBlock } from "@/lib/wizard/design-themes";
 
 const TONE_REFERENCES: Record<string, string> = {
-  corporativo: "consultoria premium e confiável — não template SaaS azul genérico",
-  moderno: "startup B2B polida — limpa, espaçosa, sem clichês de gradiente roxo",
-  acolhedor: "negócio de bairro premium — calor humano, convite à visita",
-  elegante: "marca sofisticada — tipografia refinada, poucos elementos, alto contraste",
-  jovem: "marca dinâmica — energia sem parecer app de jogos",
-  tradicional: "institucional clássico — seriedade e legibilidade acima de efeitos",
+  corporativo: "consultoria premium nível McKinsey/Accenture — não template SaaS azul genérico. Referências: stripe.com, notion.so",
+  moderno: "startup B2B nível Vercel/Linear — clean, espaçosa, tipografia dominante, sem gradiente roxo",
+  acolhedor: "negócio de bairro premium — calor humano real, não ilustrações flat genéricas. Referências: sites de restaurantes premiados",
+  elegante: "marca sofisticada nível LVMH/Apple — tipografia como elemento principal, espaço negativo intencional, zero clutter",
+  jovem: "marca com energia e personalidade — Figma.com, Framer.com como referência de energia sem ser infantil",
+  tradicional: "institucional de autoridade — legibilidade, densidade controlada, credibilidade acima de efeitos visuais",
 };
 
 function inferPaletteHint(answers: WizardAnswers): string {
@@ -49,9 +49,10 @@ export function buildDesignLanguageBlock(answers: WizardAnswers): string {
     `Marca: ${company} — segmento ${segment}. Tom: ${answers.tone ?? "corporativo"} (${ref}).`,
     inferPaletteHint(answers),
     themeSection,
-    `Tipografia: sans-serif moderna (Inter, Manrope ou Plus Jakarta Sans) nos corpos; títulos podem usar contraste serif só se combinar com o tom.`,
-    `Componentes: cards \`rounded-xl\` com sombra suave; botões primários \`rounded-lg\`; hover com \`transition\` Tailwind apenas.`,
-    `Micro-interações: estados focus em formulários e hover em cards — sem JavaScript, sem confetti ou animações pesadas.`,
+    `Tipografia: combinar 2 fontes Google Fonts — 1 display/serif para títulos impactantes (Fraunces, DM Serif Display, Playfair Display, Cormorant) + 1 sans moderna para corpo (Inter, Manrope, Plus Jakarta Sans). Saltos dramáticos de tamanho entre display/h1/h2/body.`,
+    `Layout com caráter: assimetria intencional, tipografia quebrando grid, sobreposição de elementos decorativos, seções com fundos alternados. Pense Awwwards, não template.`,
+    `Micro-interações com JS vanilla: IntersectionObserver para scroll reveal, contadores animados para stats/métricas, sticky header que muda opacity/blur ao scrollar, hover 3D-tilt em cards premium.`,
+    `Componentes: cards com bordas sutis e hover:scale + shadow profunda; botões primários com gradiente ou fill sólido da paleta; badges como chips com cor de acento.`,
   ]
     .filter(Boolean)
     .join("\n");

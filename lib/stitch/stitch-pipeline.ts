@@ -122,8 +122,20 @@ export async function runStitchPagePipeline(
   let designSystemId = opts?.designSystemId ?? null;
   let repairNote: string | null = null;
   let last: (StitchGenerationResult & { variantScreenIds?: string[] }) | null = null;
-  let homeChromeSet = Boolean(opts?.homeHtmlSample?.trim());
   const skipHomeSample = Boolean(designSystemId) || mode !== "generate";
+
+  // Re-seed chrome cache a partir do homeHtmlSample se disponível (necessário quando
+  // o processo pm2 reiniciou entre a geração da home e as páginas subsequentes,
+  // zerando o singleton cachedChrome).
+  let homeChromeSet = false;
+  if (pageType !== "home" && opts?.homeHtmlSample?.trim()) {
+    try {
+      setChromeSourceFromHome(sanitizeStitchHtml(opts.homeHtmlSample));
+      homeChromeSet = true;
+    } catch (err) {
+      logger.warn("[stitch:pipeline] chrome re-seed from homeHtmlSample failed", { err: String(err) });
+    }
+  }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const rawHome = opts?.homeHtmlSample?.trim() ?? null;

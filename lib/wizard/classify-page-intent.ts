@@ -61,7 +61,9 @@ export async function classifyPageIntent(
       timeoutMs: 12_000,
     });
 
-    const parsed = JSON.parse(raw) as { action?: string; feedback?: string };
+    // LLM às vezes retorna ```json\n{...}\n``` — limpar antes de parsear
+    const cleaned = stripJsonFences(raw);
+    const parsed = JSON.parse(cleaned) as { action?: string; feedback?: string };
     const action = normalizeAction(parsed.action);
     if (action === "unknown") {
       logger.warn("[wizard:intent] LLM returned unknown action", { raw: raw.slice(0, 120) });
@@ -76,6 +78,15 @@ export async function classifyPageIntent(
     logger.warn("[wizard:intent] classify failed, falling back to regex", { err: String(err) });
     return { action: "unknown" };
   }
+}
+
+function stripJsonFences(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith("```")) s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first >= 0 && last > first) s = s.slice(first, last + 1);
+  return s;
 }
 
 function normalizeAction(a?: string): PageIntent {

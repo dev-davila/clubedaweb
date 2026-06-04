@@ -7,6 +7,8 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   experimental: {
     outputFileTracingRoot: path.join(__dirname, '../'),
+    // Habilita instrumentation.ts (worker de flush do buffer do wizard/WhatsApp).
+    instrumentationHook: true,
   },
   eslint: {
     ignoreDuringBuilds: true,

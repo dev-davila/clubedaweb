@@ -63,7 +63,7 @@ export async function GET() {
 // ---- Event Handlers ----
 
 async function handleMessageUpsert(
-  instance: { id: string; instanceName: string },
+  instance: { id: string; instanceName: string; purpose?: string },
   data: any
 ) {
   try {
@@ -160,29 +160,50 @@ async function handleMessageUpsert(
 
     console.log(`[Webhook] Message saved: ${key.id} in conv ${conversation.id}`);
 
-    // ---- AI Agent Integration ----
-    // Only process incoming messages (not fromMe) with text content
+    // ---- Roteamento: wizard vs atendimento ----
+    // Só processa mensagens recebidas (não fromMe) com conteúdo de texto.
     if (!key.fromMe && content) {
-      try {
-        const { processIncomingMessage } = await import("@/lib/ai-agent");
-        const result = await processIncomingMessage({
-          instanceId: instance.id,
-          remoteJid,
-          phone,
-          content,
-          messageType: mediaType,
-          externalMsgId: key.id,
-          contactName: contactName || undefined,
-          conversationId: conversation.id,
-        });
-        if (result.handled) {
-          console.log(`[Webhook] AI processed message for ${phone}`);
-        } else {
-          console.log(`[Webhook] AI skipped: ${result.reason}`);
+      if (instance.purpose === "wizard") {
+        // Instância dedicada ao gerador de sites: agrega a rajada (debounce ~20s)
+        // e responde uma vez. NÃO aciona o ai-agent de atendimento.
+        try {
+          const { bufferWizardInbound } = await import("@/lib/wizard/whatsapp-bridge");
+          await bufferWizardInbound({
+            instanceId: instance.id,
+            remoteJid,
+            phone,
+            content,
+            mediaType,
+            externalMsgId: key.id,
+            contactName: contactName || undefined,
+            conversationId: conversation.id,
+          });
+          console.log(`[Webhook] Wizard buffered message for ${phone}`);
+        } catch (wzError) {
+          console.error("[Webhook] Wizard buffering error (non-blocking):", wzError);
         }
-      } catch (aiError) {
-        console.error("[Webhook] AI processing error (non-blocking):", aiError);
-        // Non-blocking: message is already saved, AI failure doesn't break the flow
+      } else {
+        try {
+          const { processIncomingMessage } = await import("@/lib/ai-agent");
+          const result = await processIncomingMessage({
+            instanceId: instance.id,
+            remoteJid,
+            phone,
+            content,
+            messageType: mediaType,
+            externalMsgId: key.id,
+            contactName: contactName || undefined,
+            conversationId: conversation.id,
+          });
+          if (result.handled) {
+            console.log(`[Webhook] AI processed message for ${phone}`);
+          } else {
+            console.log(`[Webhook] AI skipped: ${result.reason}`);
+          }
+        } catch (aiError) {
+          console.error("[Webhook] AI processing error (non-blocking):", aiError);
+          // Non-blocking: message is already saved, AI failure doesn't break the flow
+        }
       }
     }
   } catch (error) {

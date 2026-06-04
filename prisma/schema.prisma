@@ -1208,6 +1208,7 @@ model EvolutionInstance {
   instanceToken String?
   phoneNumber   String?
   status        String   @default("created") // created, connecting, open, close
+  purpose       String   @default("support") // support (ai-agent) | wizard (gerador de sites)
   profileName   String?
   profilePicUrl String?
   serverId      String
@@ -1482,6 +1483,7 @@ model WizardSession {
 
   @@index([userId])
   @@index([state])
+  @@index([channel, channelRef])
 }
 
 model WizardMessage {
@@ -1494,4 +1496,38 @@ model WizardMessage {
   createdAt DateTime @default(now())
 
   @@index([sessionId, createdAt])
+}
+
+// Buffer de agregação da "rajada" de mensagens do WhatsApp (debounce ~20s).
+// Uma janela aberta por contato (instanceId, remoteJid) enquanto status = "collecting".
+model WizardInboxBuffer {
+  id              String   @id @default(cuid())
+  instanceId      String
+  remoteJid       String
+  phone           String
+  contactName     String?
+  conversationId  String?
+  wizardSessionId String?
+  status          String   @default("collecting") // collecting | processing | done | error
+  flushAt         DateTime // now + DEBOUNCE_MS; atualizado a cada nova mensagem
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  messages WizardInboxMessage[]
+
+  @@index([status, flushAt])
+  @@index([instanceId, remoteJid, status])
+}
+
+model WizardInboxMessage {
+  id            String   @id @default(cuid())
+  bufferId      String
+  buffer        WizardInboxBuffer @relation(fields: [bufferId], references: [id], onDelete: Cascade)
+  content       String
+  externalMsgId String?
+  mediaType     String   @default("text")
+  receivedAt    DateTime @default(now())
+
+  @@index([bufferId])
 }

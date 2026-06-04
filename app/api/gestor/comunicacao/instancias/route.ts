@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     const user = await getUser();
     const body = await request.json();
     const { instanceName, serverId } = body;
+    const purpose = body.purpose === "wizard" ? "wizard" : "support";
     if (!instanceName || !serverId) {
       return NextResponse.json({ error: "instanceName e serverId obrigat\u00f3rios" }, { status: 400 });
     }
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
         instanceName,
         instanceToken: evoResult?.hash?.apikey || evoResult?.hash || null,
         status: evoResult?.instance?.status || "created",
+        purpose,
         serverId: server.id,
         ownerId: user.id,
       },
@@ -77,6 +79,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ instance, qrcode: evoResult?.qrcode }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// PATCH: Update instance settings (currently: purpose = support | wizard)
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await getUser();
+    const body = await request.json();
+    const { id, purpose } = body as { id?: string; purpose?: string };
+    if (!id) return NextResponse.json({ error: "ID obrigatório" }, { status: 400 });
+    if (purpose !== "support" && purpose !== "wizard") {
+      return NextResponse.json({ error: "purpose deve ser 'support' ou 'wizard'" }, { status: 400 });
+    }
+    const instance = await prisma.evolutionInstance.findUnique({ where: { id } });
+    if (!instance) return NextResponse.json({ error: "Não encontrada" }, { status: 404 });
+    if (user.role !== "admin" && instance.ownerId !== user.id) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    }
+    const updated = await prisma.evolutionInstance.update({
+      where: { id },
+      data: { purpose },
+    });
+    return NextResponse.json({ instance: updated });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: e.message === "Unauthorized" ? 403 : 500 });
   }
 }
 

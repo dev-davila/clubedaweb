@@ -99,6 +99,22 @@ export async function findOrCreateSession(opts: {
   });
 }
 
+/**
+ * Sessão de wizard ativa de um contato de WhatsApp (channelRef = telefone),
+ * usada pela ponte do WhatsApp para reusar a conversa em andamento. Ignora
+ * sessões já publicadas — um "obrigado, quero outro" começa do zero.
+ */
+export async function getActiveWhatsappSession(channelRef: string) {
+  return prisma.wizardSession.findFirst({
+    where: {
+      channel: "whatsapp",
+      channelRef,
+      state: { notIn: ["published"] },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
 export async function appendMessage(sessionId: string, role: "user" | "assistant" | "system", content: string, metadata?: Record<string, unknown>) {
   return prisma.wizardMessage.create({
     data: {

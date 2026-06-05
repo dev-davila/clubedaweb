@@ -139,6 +139,16 @@ class EvolutionClient {
     return r.json();
   }
 
+  async findContacts(instanceName: string, instanceToken: string) {
+    const r = await this.fetchWithTimeout(`${this.apiUrl}/chat/findContacts/${instanceName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': instanceToken },
+      body: JSON.stringify({}),
+    }, 8000);
+    if (!r.ok) throw new Error(`Find contacts error ${r.status}: ${await r.text()}`);
+    return r.json();
+  }
+
   async findMessages(instanceName: string, instanceToken: string, remoteJid: string, limit = 50) {
     const r = await this.fetchWithTimeout(`${this.apiUrl}/chat/findMessages/${instanceName}`, {
       method: 'POST',

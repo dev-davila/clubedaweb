@@ -123,6 +123,7 @@ export async function flushDueBuffers(): Promise<{ processed: number }> {
         buffer.instanceId,
         buffer.remoteJid,
         "Tive um probleminha aqui pra processar sua mensagem 😅 Pode me mandar de novo?",
+        buffer.contactName,
       ).catch(() => {});
     }
   }
@@ -160,7 +161,7 @@ async function processBuffer(bufferId: string): Promise<void> {
   // advance() já persistiu WizardMessage dos dois lados (user compilado + assistant).
 
   if (result.reply) {
-    const sentId = await safeSendReply(buffer.instanceId, buffer.remoteJid, result.reply);
+    const sentId = await safeSendReply(buffer.instanceId, buffer.remoteJid, result.reply, buffer.contactName);
     await persistBotMessage(buffer, result.reply, sentId);
   }
 
@@ -226,6 +227,7 @@ async function safeSendReply(
   instanceId: string,
   remoteJid: string,
   text: string,
+  contactName?: string | null,
 ): Promise<string | null> {
   const instance = await prisma.evolutionInstance.findUnique({
     where: { id: instanceId },
@@ -236,11 +238,42 @@ async function safeSendReply(
     return null;
   }
   const client = createEvolutionClient({ apiUrl: instance.server.apiUrl, apiKey: instance.server.apiKey });
-  // O WhatsApp pode identificar o contato por @lid (id interno) em vez do número
-  // real. Enviar só o "número" do @lid falha (não é um WhatsApp válido); para
-  // @lid passamos o JID completo e o Baileys roteia internamente. Para o caso
-  // normal (@s.whatsapp.net) mantemos só o número, como o restante do sistema.
-  const number = remoteJid.endsWith("@lid") ? remoteJid : remoteJid.split("@")[0];
+  const number = await resolveSendNumber(client, instance, remoteJid, contactName);
   const sent = await client.sendText(instance.instanceName, instance.instanceToken, number, text);
   return sent?.key?.id ?? null;
+}
+
+/**
+ * Resolve o número de destino para o sendText.
+ *
+ * O WhatsApp (LID/Linked ID) às vezes identifica o contato só por @lid (id
+ * interno), sem o número real — e enviar para o @lid falha (não é endereço
+ * válido). Nesses casos buscamos nos contatos da instância um @s.whatsapp.net
+ * com o mesmo nome (pushName) e usamos o número real dele. Para @s.whatsapp.net
+ * normal seguimos usando só o número, como o resto do sistema.
+ */
+async function resolveSendNumber(
+  client: ReturnType<typeof createEvolutionClient>,
+  instance: { instanceName: string; instanceToken: string | null },
+  remoteJid: string,
+  contactName?: string | null,
+): Promise<string> {
+  if (!remoteJid.endsWith("@lid")) return remoteJid.split("@")[0];
+  try {
+    const raw = await client.findContacts(instance.instanceName, instance.instanceToken!);
+    const list: any[] = Array.isArray(raw) ? raw : raw?.contacts ?? raw?.data ?? [];
+    const realJid = (c: any): string | null =>
+      typeof c?.remoteJid === "string" && c.remoteJid.endsWith("@s.whatsapp.net") ? c.remoteJid : null;
+    // 1) match por nome (pushName/name) — caso típico
+    const byName = contactName
+      ? list.find((c) => realJid(c) && (c.pushName === contactName || c.name === contactName))
+      : null;
+    const hit = byName ?? null;
+    if (hit) return realJid(hit)!.split("@")[0];
+    logger.error(`[wa-bridge] não resolvi número real do @lid ${remoteJid} (contato "${contactName}")`);
+  } catch (err) {
+    logger.error(`[wa-bridge] erro resolvendo @lid ${remoteJid}`, String(err));
+  }
+  // Fallback: tenta o lid (provavelmente falha, mas deixa o erro explícito no log).
+  return remoteJid.split("@")[0];
 }

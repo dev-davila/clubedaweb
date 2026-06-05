@@ -236,7 +236,11 @@ async function safeSendReply(
     return null;
   }
   const client = createEvolutionClient({ apiUrl: instance.server.apiUrl, apiKey: instance.server.apiKey });
-  const number = remoteJid.split("@")[0];
+  // O WhatsApp pode identificar o contato por @lid (id interno) em vez do número
+  // real. Enviar só o "número" do @lid falha (não é um WhatsApp válido); para
+  // @lid passamos o JID completo e o Baileys roteia internamente. Para o caso
+  // normal (@s.whatsapp.net) mantemos só o número, como o restante do sistema.
+  const number = remoteJid.endsWith("@lid") ? remoteJid : remoteJid.split("@")[0];
   const sent = await client.sendText(instance.instanceName, instance.instanceToken, number, text);
   return sent?.key?.id ?? null;
 }

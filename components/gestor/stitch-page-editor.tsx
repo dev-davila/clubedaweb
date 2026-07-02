@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Type as TypeIcon,
+  Sparkles,
 } from "lucide-react";
 import { instrumentHtmlForEditor, deinstrumentHtml } from "@/lib/editor/instrument-html";
 
@@ -37,11 +38,13 @@ interface SelectedInfo {
 
 export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml }: Props) {
   const [html, setHtml] = useState(initialHtml);
-  const [tab, setTab] = useState<"visual" | "html">("visual");
+  const [tab, setTab] = useState<"visual" | "html" | "ai">("visual");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [selected, setSelected] = useState<SelectedInfo | null>(null);
   const [instrumentedCount, setInstrumentedCount] = useState(0);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Aplica instrumentação só pro iframe — o html salvo continua limpo
@@ -106,6 +109,34 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
       setStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro" });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const runAi = async () => {
+    const instruction = aiPrompt.trim();
+    if (!instruction || aiBusy) return;
+    setAiBusy(true);
+    setStatus(null);
+    try {
+      // Envia o HTML limpo (sem instrumentação do editor visual).
+      const cleaned = deinstrumentHtml(html);
+      const res = await fetch(`/api/gestor/stitch-page/${pageType}/ai`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instruction, html: cleaned }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Falha ao gerar");
+      setHtml(data.html);
+      setSelected(null);
+      setStatus({
+        ok: true,
+        msg: `IA aplicou a alteração · ${Math.round(data.bytes / 1024)} KB. Revise no preview e clique em Salvar para publicar.`,
+      });
+    } catch (err) {
+      setStatus({ ok: false, msg: err instanceof Error ? err.message : "Erro na IA" });
+    } finally {
+      setAiBusy(false);
     }
   };
 
@@ -193,6 +224,15 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
               <Code2 size={12} />
               HTML
             </button>
+            <button
+              onClick={() => setTab("ai")}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition ${
+                tab === "ai" ? "bg-white border border-indigo-300 text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              <Sparkles size={12} />
+              IA
+            </button>
           </div>
 
           {tab === "visual" ? (
@@ -217,13 +257,44 @@ export function StitchPageEditor({ pageType, pageLabel, publicRoute, initialHtml
                 />
               )}
             </div>
-          ) : (
+          ) : tab === "html" ? (
             <textarea
               value={html}
               onChange={(e) => setHtml(e.target.value)}
               className="flex-1 w-full p-3 text-xs font-mono text-gray-800 bg-white focus:outline-none border-0 resize-none"
               spellCheck={false}
             />
+          ) : (
+            <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-3">
+              <div className="text-xs text-gray-600 space-y-1.5">
+                <p className="font-semibold text-indigo-700 flex items-center gap-1.5">
+                  <Sparkles size={13} /> Editar com IA
+                </p>
+                <p>Descreva em português o que você quer mudar nesta página. A IA reescreve o HTML aplicando o seu pedido.</p>
+                <p className="text-[11px] text-gray-400">
+                  Ex.: “deixe o hero verde escuro e troque o título para X”, “adicione uma seção de depoimentos”, “refaça o texto com foco em antivírus para empresas”.
+                </p>
+              </div>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="O que você quer mudar nesta página?"
+                rows={6}
+                disabled={aiBusy}
+                className="w-full p-3 text-sm text-gray-800 bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 resize-none disabled:opacity-60"
+              />
+              <button
+                onClick={runAi}
+                disabled={aiBusy || !aiPrompt.trim()}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                {aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {aiBusy ? "Gerando…" : "Gerar com IA"}
+              </button>
+              <p className="text-[11px] text-gray-400">
+                A IA altera só o preview. Revise e clique em <strong>Salvar</strong> (no topo) para publicar. Use <strong>Reverter</strong> se não gostar.
+              </p>
+            </div>
           )}
         </aside>
 

@@ -259,6 +259,22 @@ async function resolveSendNumber(
   contactName?: string | null,
 ): Promise<string> {
   if (!remoteJid.endsWith("@lid")) return remoteJid.split("@")[0];
+  const lid = remoteJid.split("@")[0];
+
+  // 0) De-para manual persistido: SiteConfig "wa_lid_map" = JSON { "<lid>": "<numero>" }.
+  // Alguns WhatsApp (LID) nunca expõem o número pela API; aqui o número é
+  // cadastrado uma vez e reusado. É a fonte mais confiável quando existe.
+  try {
+    const row = await prisma.siteConfig.findUnique({ where: { key: "wa_lid_map" } });
+    if (row?.value) {
+      const map = JSON.parse(row.value) as Record<string, string>;
+      const mapped = map[lid];
+      if (mapped && /^\d{10,15}$/.test(mapped)) return mapped;
+    }
+  } catch (err) {
+    logger.error("[wa-bridge] wa_lid_map inválido", String(err));
+  }
+
   try {
     const raw = await client.findContacts(instance.instanceName, instance.instanceToken!);
     const list: any[] = Array.isArray(raw) ? raw : raw?.contacts ?? raw?.data ?? [];

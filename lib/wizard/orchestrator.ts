@@ -63,6 +63,23 @@ import type { ChatMessage, WizardSnapshot } from "./types";
 
 const PREVIEW_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Rede de segurança contra páginas em branco. O Stitch costuma gerar conteúdo
+ * com animação "reveal" (`.reveal{opacity:0}` revelado por JS via `.active`),
+ * mas a regra que revela nem sempre sobrescreve a base — deixando o corpo
+ * INVISÍVEL mesmo com o JS rodando. Injetamos um CSS de alta prioridade que
+ * garante os elementos de animação sempre visíveis (perde-se o fade de entrada,
+ * mas o conteúdo nunca some). Idempotente.
+ */
+function ensureContentVisible(html: string): string {
+  if (!html || html.includes("cdw-reveal-safety")) return html;
+  const style =
+    `<style id="cdw-reveal-safety">.reveal,.fade-in,.scroll-reveal,.animate-on-scroll,[class*="reveal"]{opacity:1 !important;transform:none !important;visibility:visible !important}</style>`;
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${style}</head>`);
+  if (/<body[^>]*>/i.test(html)) return html.replace(/(<body[^>]*>)/i, `$1${style}`);
+  return style + html;
+}
+
 export interface AdvanceInput {
   userId?: string | null;
   sessionId?: string | null;
@@ -170,6 +187,8 @@ async function runPageGeneration(
       tokens: homeTokens ?? fallbackTokens(`${company} ${tagline}`),
     };
   }
+
+  result.html = ensureContentVisible(result.html);
 
   const pagesMap = await mergeStitchPage(sessionId, pageType, result.html, existingPages);
 
